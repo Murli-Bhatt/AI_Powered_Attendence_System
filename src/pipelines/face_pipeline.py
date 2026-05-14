@@ -29,7 +29,7 @@ def fix_image_rotation(image):
     from PIL import ImageOps
     return ImageOps.exif_transpose(image)
 
-MAX_DETECTION_DIM = 1024
+MAX_DETECTION_DIM = 1280
 
 def get_robust_faces(image_np, detector, cnn_detector, scan_mode="quick"):
     """
@@ -49,8 +49,9 @@ def get_robust_faces(image_np, detector, cnn_detector, scan_mode="quick"):
     scale = 1.0
     detect_image_np = image_np
     
-    # Use a smaller dimension for Deep Scan to prevent OOM crashes on cloud platforms
-    target_dim = 640 if scan_mode == "deep" else MAX_DETECTION_DIM
+    # Increase resolution for Deep Scan to 1024 (was 640) to detect smaller faces in group photos
+    # MAX_DETECTION_DIM is 1024, which is generally safe for cloud memory limits.
+    target_dim = MAX_DETECTION_DIM
     
     if max_dim > target_dim:
         scale = target_dim / max_dim
@@ -78,9 +79,19 @@ def get_robust_faces(image_np, detector, cnn_detector, scan_mode="quick"):
             for f in cnn_faces:
                 faces.append(f.rect)
         except Exception as e:
-            st.error(f"Deep Scan (CNN) failed due to memory limits. Falling back to Quick Scan. Error: {e}")
-            # Fallback to HOG if CNN fails
+            st.warning(f"Deep Scan failed (Memory limit). Using Quick Scan instead.")
+            # Fallback to HOG if CNN crashes (OOM)
             faces = detector(detect_image_np, 1)
+            
+        # SMART FALLBACK: If Deep Scan finished successfully but found 0 faces, 
+        # it might be too restrictive. Fall back to Quick Scan with upsampling.
+        if len(faces) == 0:
+            # Only show this if we were originally in deep mode
+            if scan_mode == "deep":
+                st.toast("Deep Scan found 0 faces. Using Quick Scan fallback...", icon="🔍")
+            faces = detector(detect_image_np, 1)
+        elif scan_mode == "deep":
+            st.toast("Deep Scan (CNN) successful!", icon="✅")
             
     # Rescale rectangles back to original image dimensions
     if scale != 1.0:
