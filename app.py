@@ -59,6 +59,22 @@ st.markdown(
 if "current_screen" not in st.session_state:
     st.session_state["current_screen"] = "home"
 
+# ── Handle QR Code Direct Links (Query Parameters) ──
+q_params = st.query_params
+if q_params.get("action") == "enroll" and "subject_code" in q_params:
+    subject_code = q_params["subject_code"]
+    st.session_state["pending_enrollment_subject_code"] = subject_code
+    
+    # If student is already logged in, redirect straight to dashboard
+    if st.session_state.get("current_student_id"):
+        st.session_state["current_screen"] = "student_dashboard"
+    else:
+        # Otherwise, redirect to student login portal (Face ID screen)
+        st.session_state["current_screen"] = "student"
+        
+    # Clear URL params to avoid loops or reprocessing on manual refreshes
+    st.query_params.clear()
+
 # ── Render Header ──
 render_header()
 

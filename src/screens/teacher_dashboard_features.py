@@ -3,6 +3,7 @@ from src.database.db import get_teacher_subjects, create_subject, log_attendance
 from src.pipelines.face_pipeline import recognize_multiple_faces
 from src.pipelines.voice_pipeline import recognize_student_voice
 from src.database.config import supabase
+from src.utils.qr import render_qr_section
 
 def handle_add_subject(teacher_id):
     code = st.session_state.get("add_subj_code", "").strip()
@@ -46,6 +47,9 @@ def render_manage_subject(teacher_id):
     else:
         st.info("You haven't registered any subjects yet.")
         
+    # Render QR code section using modular utility function
+    render_qr_section(subjects)
+    
     st.markdown("---")
     st.markdown("### Add New Subject")
     
