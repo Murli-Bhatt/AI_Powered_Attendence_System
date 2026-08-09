@@ -1,10 +1,8 @@
 import streamlit as st
 
-
 def render_home_screen():
     """Renders the home screen with Teacher & Student portal buttons."""
 
-    # ── Custom CSS for Home Screen ──
     st.markdown(
         """
         <style>
@@ -146,13 +144,12 @@ def render_home_screen():
                 margin-bottom: 0;
             }
 
-            /* ── Button styling visually placing it matching the card bottom ── */
             div[data-testid="stHorizontalBlock"] .stButton {
                 width: 100% !important;
                 display: flex !important;
                 justify-content: center !important;
                 align-items: center !important;
-                margin-top: -3.2rem !important; /* Perfect placement in the bottom padding */
+                margin-top: -3.2rem !important;
                 position: relative;
                 z-index: 10;
             }
@@ -173,14 +170,12 @@ def render_home_screen():
                 width: max-content !important;
             }
             
-            /* Teacher specific text color on hover */
             div[data-testid="column"]:nth-of-type(2) .stButton > button:hover {
                 color: #a78bfa !important;
                 background: rgba(167, 139, 250, 0.05) !important;
                 letter-spacing: 2.5px !important;
             }
             
-            /* Student specific text color on hover */
             div[data-testid="column"]:nth-of-type(3) .stButton > button:hover {
                 color: #55efc4 !important;
                 background: rgba(85, 239, 196, 0.05) !important;
@@ -192,7 +187,6 @@ def render_home_screen():
                 color: #ffffff !important;
             }
 
-            /* ── Background Glow Effects ── */
             .glow-purple {
                 position: fixed;
                 bottom: -100px;
@@ -215,7 +209,6 @@ def render_home_screen():
                 z-index: 0;
             }
 
-            /* ── Feature Pills ── */
             .features-row {
                 display: flex;
                 justify-content: center;
@@ -260,7 +253,6 @@ def render_home_screen():
         unsafe_allow_html=True,
     )
 
-    # ── Portal Cards using HTML + Streamlit buttons ──
     col_spacer_l, col_teacher, col_student, col_spacer_r = st.columns(
         [0.5, 2, 2, 0.5], gap="small"
     )
@@ -295,7 +287,6 @@ def render_home_screen():
         )
         student_clicked = st.button("ENTER →", key="btn_student", width="stretch")
 
-    # ── Feature Pills ──
     st.markdown(
         """
         <div class="features-row">
@@ -316,7 +307,6 @@ def render_home_screen():
         unsafe_allow_html=True,
     )
 
-    # ── Handle Navigation ──
     if teacher_clicked:
         st.session_state["current_screen"] = "teacher"
         st.rerun()

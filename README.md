@@ -56,13 +56,17 @@ Standard face detectors often fail on webcam feeds due to scaling issues or head
 ```text
 snapclass/
 │
-├── src/
-│   ├── components/      # Reusable UI elements (Headers, Navbars)
-│   ├── database/        # Supabase connection and CRUD operations
-│   ├── pipelines/       # Core AI logic (face_pipeline.py, voice_pipeline.py)
-│   ├── screens/         # Main views (Teacher, Student, Home)
-│   └── utils/           # Custom CSS styling and helpers
+├── backend/
+│   ├── database/        # Supabase database config & CRUD operations
+│   └── pipelines/       # AI biometric logic (face_pipeline.py, voice_pipeline.py)
 │
-├── app.py               # Main entry point for Streamlit
+├── frontend/
+│   ├── app.py           # Primary Streamlit app entry point
+│   ├── components/      # Reusable UI elements (Header, Navbar)
+│   ├── screens/         # UI views (Home, Teacher Portal, Student Dashboard)
+│   └── utils/           # CSS styling tokens & QR generator helpers
+│
+├── app.py               # Main launcher delegating execution to frontend/app.py
 ├── requirements.txt     # Python dependencies
-└── .env                 # Environment variables (not tracked in git)
+└── .streamlit/          # Streamlit configuration & secrets.toml
+```

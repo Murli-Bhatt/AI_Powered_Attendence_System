@@ -14,13 +14,12 @@ def generate_qr_code(url: str) -> io.BytesIO:
 
 def render_qr_section(subjects: list):
     """
-    Renders the beautiful glassmorphic QR Code generator section for the teacher.
+    Renders the glassmorphic QR Code generator section for the teacher.
     """
     st.markdown("---")
     st.markdown("### 🖨️ Generate Subject QR Codes")
     
     if subjects:
-        # Create a dictionary of subject options
         sub_options = {f"{s['subject_code']} - {s['name']} (Sec {s['section']})": s for s in subjects}
         selected_sub_display = st.selectbox(
             "Select Subject to Generate QR Code", 
@@ -29,28 +28,20 @@ def render_qr_section(subjects: list):
         )
         selected_sub = sub_options[selected_sub_display]
         
-        # Base URL input allowing easy local/deployment toggle
         base_url = st.text_input(
             "Base Application URL",
             value="https://snapclass--ai-attendence-system-cfikqqbrr2gj2xmspvsbzf.streamlit.app",
-           
             key="qr_base_url_input"
         )
         
-        # Construct and normalize the direct enrollment link
         url_clean = base_url.strip().rstrip("/")
         enrollment_url = f"{url_clean}/?action=enroll&subject_code={selected_sub['subject_code']}"
         
         col_qr, col_info = st.columns([1, 1.5])
         with col_qr:
             try:
-                # Generate QR code offline
                 qr_buffer = generate_qr_code(enrollment_url)
-                
-                # Display beautifully in column
                 st.image(qr_buffer, width=220, caption=f"Enrollment QR for {selected_sub['subject_code']}")
-                
-                # Elegant download button
                 st.download_button(
                     label="Download QR Code",
                     data=qr_buffer.getvalue(),

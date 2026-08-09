@@ -2,19 +2,16 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 
-from src.database.db import create_student
-from src.utils.styles import apply_global_styles, full_screen_spinner
+from backend.database.db import create_student
+from frontend.utils.styles import apply_global_styles, full_screen_spinner
 
 def render_student_screen():
     """Student Portal screen with Face ID login and automated registration."""
-    # Apply shared styles
     apply_global_styles()
     
-    # Lazy imports for AI logic to keep UI snappy
-    from src.pipelines.face_pipeline import recognize_student_face, get_face_encoding, get_trained_svc
-    from src.pipelines.voice_pipeline import get_voice_encoding, get_known_voices
+    from backend.pipelines.face_pipeline import recognize_student_face, get_face_encoding, get_trained_svc, fix_image_rotation
+    from backend.pipelines.voice_pipeline import get_voice_encoding, get_known_voices
 
-    # Initialize states
     if "student_auth_step" not in st.session_state:
         st.session_state["student_auth_step"] = "capture"
     if "temp_face_encoding" not in st.session_state:
@@ -83,8 +80,6 @@ def render_student_screen():
             img_file_buffer = st.camera_input("Authentication Camera", label_visibility="collapsed")
 
         if img_file_buffer is not None:
-            # Process image
-            from src.pipelines.face_pipeline import fix_image_rotation
             img = Image.open(img_file_buffer)
             img = fix_image_rotation(img)
             img_array = np.array(img)
@@ -97,8 +92,6 @@ def render_student_screen():
                 st.session_state["current_screen"] = "student_dashboard"
                 st.rerun()
             else:
-                # Face not recognized, proceed to registration
-                # Extract the raw encoding to save for registration
                 encoding = get_face_encoding(img_array)
                 if encoding is None:
                     st.toast("❌ Could not detect a clear face. Please try again.", icon="⚠️")
@@ -177,25 +170,21 @@ def render_student_screen():
                                     st.stop()
                                 voice_emb_list = voice_emb.tolist()
                                 
-                    # Proceed to save in DB
                     with full_screen_spinner("Enrolling student..."):
                         face_emb_list = st.session_state["temp_face_encoding"].tolist()
                         res = create_student(name, face_emb_list, voice_emb_list)
                         
                         if res["success"]:
-                            # Invalidate model caches so they retrain automatically next time
                             get_trained_svc.clear()
                             get_known_voices.clear()
                             
                             st.toast("✅ Registration complete! Logging you in...", icon="🎉")
                             
-                            # Log them in automatically if possible
                             data = res.get("data")
                             if data and len(data) > 0 and "student_id" in data[0]:
                                 st.session_state["current_student_id"] = data[0]["student_id"]
                                 st.session_state["current_screen"] = "student_dashboard"
                             else:
-                                # Fallback if no data returned
                                 st.session_state["student_auth_step"] = "capture"
                             
                             st.rerun()

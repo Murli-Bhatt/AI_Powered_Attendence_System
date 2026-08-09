@@ -1,14 +1,12 @@
 import streamlit as st
-from src.database.db import get_subject_by_code, enroll_student, get_student_attendance_summary
+from backend.database.db import get_subject_by_code, enroll_student, get_student_attendance_summary
 
 def render_student_dashboard():
-    """Placeholder for the student dashboard."""
-    # Check if student is logged in
+    """Student dashboard screen."""
     if "current_student_id" not in st.session_state:
         st.session_state["current_screen"] = "student"
         st.rerun()
 
-    # ── Render Persisted Enrollment Toasts ──
     if "enrollment_toast" in st.session_state:
         toast_data = st.session_state.pop("enrollment_toast")
         st.toast(toast_data["message"], icon=toast_data["icon"])
@@ -50,7 +48,6 @@ def render_student_dashboard():
         unsafe_allow_html=True,
     )
     
-    # ── Handle Pending QR Code Enrollment ──
     if "pending_enrollment_subject_code" in st.session_state:
         pending_subject_code = st.session_state["pending_enrollment_subject_code"]
         
@@ -62,7 +59,6 @@ def render_student_dashboard():
             subject_id = subject_data["subject_id"]
             subject_name = subject_data["name"]
             
-            # Show a beautiful glassmorphic confirmation prompt card
             st.markdown(
                 f"""
                 <style>
@@ -102,7 +98,6 @@ def render_student_dashboard():
                 unsafe_allow_html=True
             )
             
-            # Confirmation Buttons
             btn_col1, btn_col2, btn_spacer = st.columns([1.2, 1.2, 3])
             with btn_col1:
                 confirm_enroll = st.button("Yes, Enroll Me", type="primary", key="qr_confirm_enroll_btn", width="stretch")
@@ -121,7 +116,6 @@ def render_student_dashboard():
                             st.session_state["enrollment_toast"] = {"message": f"You are already enrolled in {subject_name}.", "icon": "ℹ️"}
                         else:
                             st.session_state["enrollment_toast"] = {"message": f"Failed to enroll: {error_msg}", "icon": "⚠️"}
-                # Clean up session state and reload page
                 st.session_state.pop("pending_enrollment_subject_code", None)
                 st.rerun()
                 
@@ -132,7 +126,6 @@ def render_student_dashboard():
                 
             st.divider()
         else:
-            # Subject code from QR was not found in DB
             st.session_state["enrollment_toast"] = {"message": f"Scanned subject code '{pending_subject_code}' not found.", "icon": "⚠️"}
             st.session_state.pop("pending_enrollment_subject_code", None)
             st.rerun()

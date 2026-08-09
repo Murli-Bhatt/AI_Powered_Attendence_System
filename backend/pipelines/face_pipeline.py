@@ -1,6 +1,6 @@
 import streamlit as st
 import numpy as np
-from src.database.config import supabase
+from backend.database.config import supabase
 import json
 
 @st.cache_resource(show_spinner=False)
@@ -36,21 +36,15 @@ def get_robust_faces(image_np, detector, cnn_detector, scan_mode="quick"):
     Detects faces based on the selected mode:
     - quick: HOG detector (fast, CPU)
     - deep: CNN detector (highly accurate, handles angles/tilts)
-    
-    Handles high-resolution images by downsampling for detection and 
-    scaling coordinates back to the original size.
     """
     import dlib
     from PIL import Image
     
-    # Calculate scaling factor for high-resolution images
     h, w = image_np.shape[:2]
     max_dim = max(h, w)
     scale = 1.0
     detect_image_np = image_np
     
-    # Increase resolution for Deep Scan to 1024 (was 640) to detect smaller faces in group photos
-    # MAX_DETECTION_DIM is 1024, which is generally safe for cloud memory limits.
     target_dim = MAX_DETECTION_DIM
     
     if max_dim > target_dim:
@@ -58,7 +52,6 @@ def get_robust_faces(image_np, detector, cnn_detector, scan_mode="quick"):
         new_w = int(w * scale)
         new_h = int(h * scale)
         
-        # Resize for faster detection
         img_pil = Image.fromarray(image_np)
         img_pil = img_pil.resize((new_w, new_h), Image.Resampling.LANCZOS)
         detect_image_np = np.array(img_pil)
@@ -66,34 +59,26 @@ def get_robust_faces(image_np, detector, cnn_detector, scan_mode="quick"):
     faces = dlib.rectangles()
     
     if scan_mode == "quick":
-        # Try HOG detector (multi-scale)
         faces = detector(detect_image_np, 0)
         if len(faces) == 0:
-            faces = detector(detect_image_np, 1) # One upsample for smaller faces
+            faces = detector(detect_image_np, 1)
             
     elif scan_mode == "deep":
-        # Try CNN detector
         try:
-            # Upsample=0 is MUCH safer for memory-limited cloud environments (like Streamlit Cloud)
             cnn_faces = cnn_detector(detect_image_np, 0)
             for f in cnn_faces:
                 faces.append(f.rect)
         except Exception as e:
             st.warning(f"Deep Scan failed (Memory limit). Using Quick Scan instead.")
-            # Fallback to HOG if CNN crashes (OOM)
             faces = detector(detect_image_np, 1)
             
-        # SMART FALLBACK: If Deep Scan finished successfully but found 0 faces, 
-        # it might be too restrictive. Fall back to Quick Scan with upsampling.
         if len(faces) == 0:
-            # Only show this if we were originally in deep mode
             if scan_mode == "deep":
                 st.toast("Deep Scan found 0 faces. Using Quick Scan fallback...", icon="🔍")
             faces = detector(detect_image_np, 1)
         elif scan_mode == "deep":
             st.toast("Deep Scan (CNN) successful!", icon="✅")
             
-    # Rescale rectangles back to original image dimensions
     if scale != 1.0:
         inv_scale = 1.0 / scale
         final_faces = dlib.rectangles()
@@ -107,7 +92,6 @@ def get_robust_faces(image_np, detector, cnn_detector, scan_mode="quick"):
         return final_faces
             
     return faces
-
 
 def get_face_encoding(image_np, scan_mode="quick"):
     """
@@ -129,7 +113,6 @@ def get_face_encoding(image_np, scan_mode="quick"):
 def get_trained_svc():
     """
     Fetches student encodings from the database and trains an SVM model.
-    Uses data augmentation (Gaussian noise) to expand single samples into clusters.
     """
     from sklearn.svm import SVC
     
@@ -157,28 +140,23 @@ def get_trained_svc():
     if len(X_raw) == 0:
         return None
         
-    # Check for Fallback: If only one student is registered
     unique_students = list(set(y_raw))
     if len(unique_students) < 2:
         return {"type": "fallback", "X": X_raw, "y": y_raw}
         
-    # Data Augmentation: Expand 1 sample into 10 per student
     X_aug = []
     y_aug = []
     noise_level = 0.01
     samples_per_student = 10
     
     for emb, s_id in zip(X_raw, y_raw):
-        # Original sample
         X_aug.append(emb)
         y_aug.append(s_id)
-        # Synthetic samples with small Gaussian noise
         for _ in range(samples_per_student - 1):
             noise = np.random.normal(0, noise_level, emb.shape)
             X_aug.append(emb + noise)
             y_aug.append(s_id)
             
-    # Train SVM
     clf = SVC(kernel='linear', probability=True)
     clf.fit(X_aug, y_aug)
     
@@ -197,7 +175,6 @@ def recognize_student_face(image_np, scan_mode="quick", tolerance=0.6):
         return {"success": False, "error": "Database is empty."}
         
     if model_data["type"] == "fallback":
-        # Single student fallback (distance based)
         X = np.array(model_data["X"])
         y = model_data["y"]
         distances = np.linalg.norm(X - encoding, axis=1)
@@ -213,14 +190,13 @@ def recognize_student_face(image_np, scan_mode="quick", tolerance=0.6):
         probs = clf.predict_proba(encoding_reshaped)[0]
         max_prob = max(probs)
         
-        if max_prob >= 0.65: # Confidence threshold for SVM
+        if max_prob >= 0.65:
             return {"success": True, "student_id": prediction[0], "confidence": max_prob}
         return {"success": False, "error": "Face not recognized (low confidence)."}
 
 def register_student_face_in_db(student_id: int, image_np):
     """
     Extracts encoding from the image and updates the student's face_embedding in Supabase.
-    Uses Quick Scan for registration to ensure high quality (HOG prefers upright, clear faces).
     """
     encoding = get_face_encoding(image_np, scan_mode="quick")
     if encoding is None:

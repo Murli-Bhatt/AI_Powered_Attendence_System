@@ -1,9 +1,9 @@
 import streamlit as st
-from src.database.db import get_teacher_subjects, create_subject, log_attendance, get_attendance_records, get_enrolled_students
-from src.pipelines.face_pipeline import recognize_multiple_faces
-from src.pipelines.voice_pipeline import recognize_student_voice
-from src.database.config import supabase
-from src.utils.qr import render_qr_section
+from backend.database.db import get_teacher_subjects, create_subject, log_attendance, get_attendance_records, get_enrolled_students
+from backend.pipelines.face_pipeline import recognize_multiple_faces, fix_image_rotation
+from backend.pipelines.voice_pipeline import recognize_student_voice, recognize_multiple_voices
+from backend.database.config import supabase
+from frontend.utils.qr import render_qr_section
 
 def handle_add_subject(teacher_id):
     code = st.session_state.get("add_subj_code", "").strip()
@@ -28,11 +28,9 @@ def render_manage_subject(teacher_id):
     if subjects:
         for s in subjects:
             subj_id = s['subject_id']
-            # Get enrolled students count
             enrolled = get_enrolled_students(subj_id)
             s['enrolled_count'] = len(enrolled)
             
-            # Get classes held count (unique timestamps)
             try:
                 logs = supabase.table('attendence_logs').select('timestamp').eq('subject_id', subj_id).execute()
                 s['classes_held'] = len(set([log['timestamp'] for log in logs.data]))
@@ -40,14 +38,12 @@ def render_manage_subject(teacher_id):
                 s['classes_held'] = 0
 
         df = pd.DataFrame(subjects)
-        # Reorder and rename columns for display
         df = df[['subject_code', 'name', 'section', 'enrolled_count', 'classes_held']]
         df.columns = ['Subject Code', 'Course Name', 'Section', 'Enrolled Students', 'Classes Held']
         st.dataframe(df, width="stretch", hide_index=True)
     else:
         st.info("You haven't registered any subjects yet.")
         
-    # Render QR code section using modular utility function
     render_qr_section(subjects)
     
     st.markdown("---")
@@ -68,7 +64,6 @@ def render_manage_subject(teacher_id):
             args=(teacher_id,)
         )
 
-
 def render_take_attendance(teacher_id):
     import numpy as np
     from PIL import Image
@@ -84,7 +79,6 @@ def render_take_attendance(teacher_id):
     selected_subject_name = st.selectbox("Select Subject", options=list(subject_options.keys()))
     selected_subject_id = subject_options[selected_subject_name]
     
-    # Clear state if subject changes
     if "last_selected_subject_id" not in st.session_state:
         st.session_state["last_selected_subject_id"] = selected_subject_id
     elif st.session_state["last_selected_subject_id"] != selected_subject_id:
@@ -98,7 +92,6 @@ def render_take_attendance(teacher_id):
     
     tab1, tab2, tab3 = st.tabs(["📸 Group Photo Upload", "📷 Live Camera", "🎤 Voice Recognition"])
     
-    # Initialize session state for detected students
     if "detected_students" not in st.session_state:
         st.session_state["detected_students"] = []
     
@@ -111,14 +104,12 @@ def render_take_attendance(teacher_id):
             images = []
             
             if uploaded_files:
-                from src.pipelines.face_pipeline import fix_image_rotation
                 if len(uploaded_files) > 5:
                     st.warning("You can only upload up to 5 photos at a time. Only the first 5 will be processed.")
                     uploaded_files = uploaded_files[:5]
                     
                 cols = st.columns(len(uploaded_files))
                 for idx, u_file in enumerate(uploaded_files):
-                    # Fix rotation based on EXIF before processing
                     img = Image.open(u_file)
                     img = fix_image_rotation(img)
                     images.append(img)
@@ -128,7 +119,6 @@ def render_take_attendance(teacher_id):
                         st.markdown('</div>', unsafe_allow_html=True)
                 
         if uploaded_files:
-            # Show Scan Mode ONLY after upload
             scan_mode_col1, scan_mode_col2 = st.columns([1, 1])
             with scan_mode_col1:
                 scan_mode = st.radio(
@@ -161,7 +151,6 @@ def render_take_attendance(teacher_id):
                             has_error = True
                             
                     if all_detected or not has_error:
-                        # Deduplicate by student_id, keeping highest confidence and aggregating sources
                         deduped = {}
                         for match in all_detected:
                             s_id = match["student_id"]
@@ -189,7 +178,6 @@ def render_take_attendance(teacher_id):
             camera_file = st.camera_input("Take Picture", label_visibility="collapsed")
         
         if camera_file is not None:
-            # Show Scan Mode ONLY after capture
             scan_mode_col1, scan_mode_col2 = st.columns([1, 1])
             with scan_mode_col1:
                 cam_scan_mode = st.radio(
@@ -207,7 +195,6 @@ def render_take_attendance(teacher_id):
                 
             if analyze_camera_clicked:
                 with st.spinner("Detecting and recognizing faces..."):
-                    from src.pipelines.face_pipeline import fix_image_rotation
                     image = Image.open(camera_file)
                     image = fix_image_rotation(image)
                     img_array = np.array(image.convert("RGB"))
@@ -228,10 +215,8 @@ def render_take_attendance(teacher_id):
         if voice_audio is not None:
             if st.button("Analyze Voice", key="btn_analyze_voice", type="primary"):
                 with st.spinner("Scanning recording for multiple voices..."):
-                    from src.pipelines.voice_pipeline import recognize_multiple_voices
                     res = recognize_multiple_voices(voice_audio)
                     if res["success"]:
-                        # Now 'res["data"]' is a list of detected students
                         for match in res["data"]:
                             match["sources"] = ["Voice"]
                         st.session_state["detected_students"] = res["data"]
@@ -240,7 +225,6 @@ def render_take_attendance(teacher_id):
                         st.error(res["error"])
                         st.session_state["detected_students"] = []
                         
-    # Display Results & Submit
     if st.session_state.get("detected_students"):
         st.markdown("---")
         st.markdown("### Attendance Reports")
@@ -249,17 +233,14 @@ def render_take_attendance(teacher_id):
         students_to_log = []
         student_ids = [match["student_id"] for match in st.session_state["detected_students"]]
         
-        # Fetch names for these IDs
         name_map = {}
         if student_ids:
             try:
-                # Use in_ for array filtering
                 name_res = supabase.table('students').select('student_id, name').in_('student_id', student_ids).execute()
                 name_map = {row['student_id']: row['name'] for row in name_res.data}
             except Exception as e:
                 print(f"Error fetching names: {e}")
                 
-        # Build DataFrame for Review
         review_data = []
         for match in st.session_state["detected_students"]:
             s_id = match["student_id"]
@@ -289,14 +270,12 @@ def render_take_attendance(teacher_id):
         with col2:
             if st.button("Confirm & Save", type="primary", width="stretch"):
                 with st.spinner("Saving records to database..."):
-                    # Ensure students to log are perfectly unique to prevent multiple records in one session
                     unique_students_to_log = list(set(students_to_log))
                     
                     res = log_attendance(selected_subject_id, unique_students_to_log)
                     if res["success"]:
                         st.toast("Attendance logged successfully!", icon="🎉")
                         
-                        # Generate Summary
                         enrolled_students = get_enrolled_students(selected_subject_id)
                         present_ids = set(unique_students_to_log)
                         
@@ -314,12 +293,11 @@ def render_take_attendance(teacher_id):
                             "absent": absent_list
                         }
                         
-                        st.session_state["detected_students"] = [] # Clear state after logging
+                        st.session_state["detected_students"] = []
                         st.rerun()
                     else:
                         st.error(f"Failed to log attendance: {res['error']}")
                     
-    # Display Summary Card
     if st.session_state.get("attendance_summary"):
         summary = st.session_state["attendance_summary"]
         st.markdown("---")
@@ -347,7 +325,6 @@ def render_take_attendance(teacher_id):
             st.session_state["attendance_summary"] = None
             st.rerun()
 
-
 def render_attendance_record(teacher_id):
     import pandas as pd
     
@@ -369,11 +346,8 @@ def render_attendance_record(teacher_id):
         
     if records:
         df = pd.DataFrame(records)
-        
-        # Format the timestamp
         df['timestamp'] = pd.to_datetime(df['timestamp']).dt.strftime('%Y-%m-%d %I:%M %p')
         
-        # Reorder and rename for UI
         display_df = df[['timestamp', 'student_name', 'student_id', 'is_present']]
         display_df.columns = ['Date & Time', 'Student Name', 'Student ID', 'Present']
         
@@ -386,7 +360,6 @@ def render_attendance_record(teacher_id):
             }
         )
         
-        # Summary Stats
         total_logs = len(df)
         unique_students = df['student_id'].nunique()
         
@@ -405,6 +378,5 @@ def render_attendance_record(teacher_id):
             """,
             unsafe_allow_html=True
         )
-        
     else:
         st.info("No attendance records found for this subject.")

@@ -26,7 +26,7 @@ def render_header():
                 border-bottom: 1px solid rgba(255, 255, 255, 0.06);
                 backdrop-filter: blur(20px);
                 -webkit-backdrop-filter: blur(20px);
-                margin-bottom: {'-3.3rem' if not is_home else '2rem'}; /* Pull inner button up visually */
+                margin-bottom: {'-3.3rem' if not is_home else '2rem'};
                 min-height: 4.8rem;
             }}
 
@@ -78,14 +78,12 @@ def render_header():
                     <div class="snap-header-sub">AI Attendance System</div>
                 </div>
             </div>
-            <!-- The right side is gracefully filled by the overlaying Streamlit button when required -->
         </div>
         """,
         unsafe_allow_html=True,
     )
 
     if not is_home:
-        # Create columns to safely overlay a native Streamlit button onto the right side of the navbar
         col1, col2 = st.columns([7.5, 1])
         with col2:
             if st.button("Home ↲", key="header_home_btn", width="stretch", type="tertiary"):
@@ -95,7 +93,6 @@ def render_header():
         st.markdown(
             """
             <style>
-            /* Make this specific button look like a compact navbar text link */
             div[data-testid="column"]:nth-of-type(2) .stButton > button,
             div[data-testid="column"]:nth-of-type(2) .stButton > button * {
                 background: transparent !important;
@@ -113,12 +110,12 @@ def render_header():
                 min-height: 0 !important;
                 height: 2.1rem !important;
                 margin-top: 0.4rem !important;
-                justify-content: flex-end !important; /* Align text to the right natively */
+                justify-content: flex-end !important;
                 transition: all 0.3s ease !important;
             }
             div[data-testid="column"]:nth-of-type(2) .stButton > button:hover {
                 color: #ffffff !important;
-                transform: translateX(-3px); /* subtle interaction */
+                transform: translateX(-3px);
             }
             </style>
             <br>

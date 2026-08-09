@@ -1,17 +1,14 @@
 import streamlit as st
-from src.database.db import register_teacher, login_teacher
-from src.utils.styles import apply_global_styles
-from src.screens.teacher_dashboard_features import render_manage_subject, render_take_attendance, render_attendance_record
+from backend.database.db import register_teacher, login_teacher
+from frontend.utils.styles import apply_global_styles
+from frontend.screens.teacher_dashboard_features import render_manage_subject, render_take_attendance, render_attendance_record
 
 def render_teacher_screen():
-    # Apply shared styles
     apply_global_styles()
 
-    # ── Initialize State ──
     if "teacher_auth_view" not in st.session_state:
         st.session_state["teacher_auth_view"] = "login"
 
-    # ── Styling & Header ──
     st.markdown(
         """
         <style>
@@ -38,7 +35,6 @@ def render_teacher_screen():
         with dash_center:
             teacher_name = st.session_state.get("logged_in_teacher_name", "Teacher")
             
-            # Show a toast pop-up on successful login
             if st.session_state.get("show_login_toast", False):
                 st.toast(f"Welcome, {teacher_name}! 👋", icon="✅")
                 st.session_state["show_login_toast"] = False
@@ -53,15 +49,12 @@ def render_teacher_screen():
                 unsafe_allow_html=True
             )
             
-            # Initialize dashboard view state
             if "teacher_dashboard_view" not in st.session_state:
                 st.session_state["teacher_dashboard_view"] = None
                 
-            # Dashboard feature selection styles
             st.markdown(
                 """
                 <style>
-                /* Style for the feature buttons */
                 div[data-testid="column"] .stButton > button {
                     border-radius: 12px !important;
                     height: 55px !important;
@@ -79,7 +72,6 @@ def render_teacher_screen():
                     transform: translateY(-2px);
                 }
                 
-                /* The card container that opens */
                 .dashboard-card {
                     background: rgba(255, 255, 255, 0.02);
                     border: 1px solid rgba(168, 85, 247, 0.3);
@@ -116,7 +108,6 @@ def render_teacher_screen():
                 unsafe_allow_html=True
             )
             
-            # The 3 feature buttons
             col1, col2, col3 = st.columns(3)
             with col1:
                 if st.button("📸 Take Attendance", width="stretch"):
@@ -133,7 +124,6 @@ def render_teacher_screen():
                     
             view = st.session_state["teacher_dashboard_view"]
             
-            # Render the selected card
             if view:
                 teacher_id = st.session_state.get("logged_in_teacher_id")
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
@@ -152,7 +142,6 @@ def render_teacher_screen():
                     
                 st.markdown('</div>', unsafe_allow_html=True)
             else:
-                # If no view is selected yet, show a nice prompt
                 st.markdown(
                     """
                     <div style="text-align: center; padding: 3rem 1rem; color: rgba(255,255,255,0.4); border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; margin-top: 1rem;">
@@ -163,7 +152,6 @@ def render_teacher_screen():
                     unsafe_allow_html=True
                 )
             
-            # Logout button at the very bottom
             st.markdown("<hr style='border-color: rgba(255,255,255,0.05); margin: 2rem 0 1.5rem 0;'>", unsafe_allow_html=True)
             _, logout_col, _ = st.columns([1, 1, 1])
             with logout_col:
@@ -176,7 +164,6 @@ def render_teacher_screen():
         _, center_col, _ = st.columns([1, 1.5, 1])
 
         with center_col:
-            # ---- LOGIN VIEW ----
             if st.session_state["teacher_auth_view"] == "login":
                 st.markdown("<h3 style='text-align: center; color: #fff; margin-bottom: 1.5rem;'>Login to Account</h3>", unsafe_allow_html=True)
                 
@@ -211,7 +198,6 @@ def render_teacher_screen():
                     st.session_state["teacher_auth_view"] = "register"
                     st.rerun()
 
-            # ---- REGISTER VIEW ----
             elif st.session_state["teacher_auth_view"] == "register":
                 st.markdown("<h3 style='text-align: center; color: #fff; margin-bottom: 1.5rem;'>Create Account</h3>", unsafe_allow_html=True)
 
@@ -248,7 +234,6 @@ def render_teacher_screen():
                     st.session_state["teacher_auth_view"] = "login"
                     st.rerun()
 
-    # JS snippet to enable 'Enter' to focus the next input field
     import streamlit.components.v1 as components
     components.html(
         """
@@ -272,7 +257,6 @@ def render_teacher_screen():
                     input.dataset.hasEnterListener = "true";
                 });
             }
-            // Run multiple times to catch elements after Streamlit renders
             attachListeners();
             setTimeout(attachListeners, 100);
             setTimeout(attachListeners, 500);

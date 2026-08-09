@@ -1,5 +1,5 @@
 import bcrypt
-from src.database.config import supabase
+from backend.database.config import supabase
 
 def hash_password(password: str) -> str:
     """Hashes a password using bcrypt."""
@@ -141,15 +141,12 @@ def get_attendance_records(subject_id: int) -> list:
     Supabase handles joins using foreign key relationships implicitly in select.
     """
     try:
-        # Assuming foreign key exists from attendence_logs.student_id -> students.student_id
-        # Supabase syntax for inner join is: '*, students(name, student_id)'
         response = supabase.table('attendence_logs') \
             .select('id, timestamp, is_present, student_id, students(name)') \
             .eq('subject_id', subject_id) \
             .order('timestamp', desc=True) \
             .execute()
             
-        # Flatten the data for easier use in DataFrames
         flattened_data = []
         for row in response.data:
             student_data = row.get('students') or {}
@@ -186,7 +183,6 @@ def enroll_student(student_id: int, subject_id: int) -> dict:
         "subject_id": subject_id
     }
     try:
-        # First check if already enrolled
         check_response = supabase.table('subject_students').select('*').eq('student_id', student_id).eq('subject_id', subject_id).execute()
         if len(check_response.data) > 0:
             return {"success": False, "error": "Already enrolled in this subject."}
@@ -199,7 +195,6 @@ def enroll_student(student_id: int, subject_id: int) -> dict:
 def get_enrolled_students(subject_id: int) -> list:
     """Fetches all students enrolled in a specific subject."""
     try:
-        # Join subject_students with students to get names
         response = supabase.table('subject_students') \
             .select('student_id, students(name)') \
             .eq('subject_id', subject_id) \
@@ -220,7 +215,6 @@ def get_enrolled_students(subject_id: int) -> list:
 def get_student_attendance_summary(student_id: int) -> list:
     """Fetches a summary of a student's attendance across all their enrolled subjects."""
     try:
-        # 1. Get subjects the student is enrolled in
         enrollments = supabase.table('subject_students') \
             .select('subject_id, subjects(subject_code, name)') \
             .eq('student_id', student_id).execute()
@@ -230,11 +224,9 @@ def get_student_attendance_summary(student_id: int) -> list:
             subj_id = row['subject_id']
             subj_data = row.get('subjects') or {}
             
-            # 2. Get total classes held (unique timestamps for this subject)
             all_logs = supabase.table('attendence_logs').select('timestamp').eq('subject_id', subj_id).execute()
             total_classes = len(set([log['timestamp'] for log in all_logs.data]))
             
-            # 3. Get classes attended by this student
             student_logs = supabase.table('attendence_logs').select('id').eq('subject_id', subj_id).eq('student_id', student_id).execute()
             attended_classes = len(student_logs.data)
             
