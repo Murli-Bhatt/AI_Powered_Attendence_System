@@ -180,7 +180,7 @@ def recognize_student_face(image_np, scan_mode="quick", tolerance=0.6):
         distances = np.linalg.norm(X - encoding, axis=1)
         min_idx = np.argmin(distances)
         if distances[min_idx] <= tolerance:
-            return {"success": True, "student_id": y[min_idx], "confidence": 1.0 - distances[min_idx]}
+            return {"success": True, "student_id": int(y[min_idx]), "confidence": float(1.0 - distances[min_idx])}
         return {"success": False, "error": "Face not recognized."}
             
     elif model_data["type"] == "svc":
@@ -191,7 +191,7 @@ def recognize_student_face(image_np, scan_mode="quick", tolerance=0.6):
         max_prob = max(probs)
         
         if max_prob >= 0.65:
-            return {"success": True, "student_id": prediction[0], "confidence": max_prob}
+            return {"success": True, "student_id": int(prediction[0]), "confidence": float(max_prob)}
         return {"success": False, "error": "Face not recognized (low confidence)."}
 
 def register_student_face_in_db(student_id: int, image_np):
@@ -227,7 +227,7 @@ def recognize_multiple_faces(image_np, scan_mode="quick", tolerance=0.6):
         
     results = []
     for face in faces:
-        bbox = (face.top(), face.right(), face.bottom(), face.left())
+        bbox = [int(face.top()), int(face.right()), int(face.bottom()), int(face.left())]
         shape = predictor(image_np, face)
         encoding = np.array(face_encoder.compute_face_descriptor(image_np, shape))
         
@@ -237,7 +237,7 @@ def recognize_multiple_faces(image_np, scan_mode="quick", tolerance=0.6):
             distances = np.linalg.norm(X - encoding, axis=1)
             min_idx = np.argmin(distances)
             if distances[min_idx] <= tolerance:
-                results.append({"student_id": y[min_idx], "confidence": 1.0 - distances[min_idx], "bbox": bbox})
+                results.append({"student_id": int(y[min_idx]), "confidence": float(1.0 - distances[min_idx]), "bbox": bbox})
                 
         elif model_data["type"] == "svc":
             clf = model_data["model"]
@@ -246,7 +246,7 @@ def recognize_multiple_faces(image_np, scan_mode="quick", tolerance=0.6):
             probs = clf.predict_proba(encoding_reshaped)[0]
             max_prob = max(probs)
             if max_prob >= 0.65:
-                results.append({"student_id": prediction[0], "confidence": max_prob, "bbox": bbox})
+                results.append({"student_id": int(prediction[0]), "confidence": float(max_prob), "bbox": bbox})
                 
     if len(results) > 0:
         return {"success": True, "data": results}
