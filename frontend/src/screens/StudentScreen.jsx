@@ -8,11 +8,23 @@ import {
   enrollStudent
 } from '../api/client';
 
-export default function StudentScreen({ initialSubjectCode = '' }) {
-  const [step, setStep] = useState('capture'); // 'capture' | 'register' | 'dashboard'
-  const [studentId, setStudentId] = useState(null);
+export default function StudentScreen({
+  initialSubjectCode = '',
+  studentId: externalStudentId = null,
+  onStudentLogin = () => {},
+  onStudentLogout = () => {}
+}) {
+  const [studentId, setStudentId] = useState(externalStudentId);
+  const [step, setStep] = useState(externalStudentId ? 'dashboard' : 'capture');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (externalStudentId) {
+      setStudentId(externalStudentId);
+      setStep('dashboard');
+    }
+  }, [externalStudentId]);
 
   // Temp face registration state
   const [tempFaceEncoding, setTempFaceEncoding] = useState(null);
@@ -51,13 +63,14 @@ export default function StudentScreen({ initialSubjectCode = '' }) {
       }
       setCameraActive(true);
     } catch (err) {
-      setErrorMsg("Unable to access camera: " + err.message);
+      console.error(err);
+      setErrorMsg('Camera access denied or unavailable.');
     }
   };
 
   const stopCamera = () => {
     if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
       mediaStreamRef.current = null;
     }
     setCameraActive(false);
@@ -72,94 +85,7 @@ export default function StudentScreen({ initialSubjectCode = '' }) {
     return () => stopCamera();
   }, [step]);
 
-  // Handle Face ID Scan
-  const handleFaceScan = async () => {
-    if (!videoRef.current) return;
-    setLoading(true);
-    setErrorMsg('');
-
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoRef.current, 0, 0);
-
-    const dataUrl = canvas.toDataURL('image/jpeg');
-
-    canvas.toBlob(async (blob) => {
-      try {
-        const res = await authenticateStudentFace(blob);
-        if (res.success) {
-          setStudentId(res.student_id);
-          setStep('dashboard');
-        } else if (res.face_encoding) {
-          setTempFaceEncoding(res.face_encoding);
-          setTempFacePreview(dataUrl);
-          setStep('register');
-        } else {
-          setErrorMsg(res.error || "No clear face detected.");
-        }
-      } catch (err) {
-        setErrorMsg(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }, 'image/jpeg');
-  };
-
-  // Handle Voice Recording for Registration
-  const startVoiceRecording = async () => {
-    audioChunksRef.current = [];
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        setVoiceBlob(blob);
-        setRecordingVoice(false);
-      };
-
-      mediaRecorder.start();
-      setRecordingVoice(true);
-    } catch (err) {
-      alert("Microphone access failed: " + err.message);
-    }
-  };
-
-  const stopVoiceRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
-  // Complete Registration
-  const handleCompleteRegistration = async (e) => {
-    e.preventDefault();
-    if (!studentName.trim() || !tempFaceEncoding) return;
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      const res = await registerStudent(studentName, tempFaceEncoding, voiceBlob);
-      if (res.success && res.data && res.data[0]) {
-        setStudentId(res.data[0].student_id);
-        setStep('dashboard');
-      } else {
-        setErrorMsg("Registration failed.");
-      }
-    } catch (err) {
-      setErrorMsg(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch Attendance Summary on Dashboard
+  // Load summary for student
   const loadSummary = async (sId) => {
     try {
       const res = await getStudentAttendanceSummary(sId);
@@ -172,16 +98,112 @@ export default function StudentScreen({ initialSubjectCode = '' }) {
   };
 
   useEffect(() => {
-    if (step === 'dashboard' && studentId) {
+    if (studentId) {
       loadSummary(studentId);
     }
-  }, [step, studentId]);
+  }, [studentId]);
 
-  // Handle Enrollment
+  // Handle Face ID Authentication
+  const handleFaceScan = async () => {
+    if (!videoRef.current) return;
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth || 640;
+      canvas.height = videoRef.current.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+      const file = new File([blob], 'student_scan.jpg', { type: 'image/jpeg' });
+
+      const res = await authenticateStudentFace(file);
+      if (res.success) {
+        if (res.matched) {
+          const sId = res.student_id;
+          setStudentId(sId);
+          onStudentLogin(sId);
+          setStep('dashboard');
+        } else {
+          setTempFaceEncoding(res.face_encoding);
+          setTempFacePreview(canvas.toDataURL('image/jpeg'));
+          setStep('register');
+        }
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Face authentication failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Voice Recording
+  const startRecordingVoice = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        setVoiceBlob(audioBlob);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+
+      mediaRecorder.start();
+      setRecordingVoice(true);
+    } catch (err) {
+      setErrorMsg('Microphone access denied or unavailable.');
+    }
+  };
+
+  const stopRecordingVoice = () => {
+    if (mediaRecorderRef.current && recordingVoice) {
+      mediaRecorderRef.current.stop();
+      setRecordingVoice(false);
+    }
+  };
+
+  // Handle Registration Submit
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    if (!studentName.trim()) return;
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      const res = await registerStudent(
+        studentName.trim(),
+        tempFaceEncoding,
+        enrollVoice ? voiceBlob : null
+      );
+
+      if (res.success) {
+        const newStudentId = res.student_id;
+        setStudentId(newStudentId);
+        onStudentLogin(newStudentId);
+        setStep('dashboard');
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Student registration failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Quick Enrollment by Subject Code
   const handleEnrollSubject = async (e) => {
     e.preventDefault();
-    if (!enrollSubjectCode.trim()) return;
+    if (!enrollSubjectCode.trim() || !studentId) return;
     setEnrollMsg('');
+
     try {
       const subRes = await getSubjectByCode(enrollSubjectCode.trim());
       if (subRes.success) {
@@ -199,24 +221,24 @@ export default function StudentScreen({ initialSubjectCode = '' }) {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ width: '100%', margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
         <div style={{
           width: '50px',
           height: '50px',
           borderRadius: '14px',
-          background: 'linear-gradient(135deg, rgba(0, 184, 148, 0.2), rgba(85, 239, 196, 0.2))',
-          border: '1px solid rgba(0, 184, 148, 0.3)',
+          background: 'var(--bg-input)',
+          border: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <UserCheck size={26} color="#55efc4" />
+          <UserCheck size={26} color="var(--accent)" />
         </div>
         <div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: '700' }}>Student Portal</h2>
-          <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--accent)' }}>Student Portal</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             {studentId ? `Student ID: ${studentId}` : 'Biometric Face ID Scan'}
           </p>
         </div>
@@ -225,75 +247,83 @@ export default function StudentScreen({ initialSubjectCode = '' }) {
       {/* STEP 1: FACE ID CAPTURE */}
       {step === 'capture' && (
         <div className="glass-card" style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'center' }}>
-          <h3 style={{ color: '#55efc4', marginBottom: '0.5rem' }}>📷 Face ID Authentication</h3>
-          <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1.5rem' }}>
+          <h3 style={{ color: 'var(--accent)', marginBottom: '0.5rem', fontWeight: '800' }}>📷 Face ID Authentication</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
             Position your face clearly in the camera view
           </p>
 
           {errorMsg && (
-            <div style={{ padding: '10px', background: 'rgba(255, 118, 117, 0.15)', border: '1px solid rgba(255, 118, 117, 0.3)', color: '#ff7675', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
+            <div style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
               <AlertCircle size={14} style={{ display: 'inline', marginRight: '6px' }} />
               {errorMsg}
             </div>
           )}
 
-          <div style={{ width: '100%', height: '300px', background: '#000', borderRadius: '14px', overflow: 'hidden', marginBottom: '1.5rem' }}>
+          <div style={{ width: '100%', height: '300px', background: '#000000', borderRadius: '14px', overflow: 'hidden', marginBottom: '1.5rem', border: '1px solid var(--border)' }}>
             <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
 
-          <button className="btn-primary" onClick={handleFaceScan} disabled={loading || !cameraActive}>
+          <button className="btn-primary" style={{ background: 'var(--accent)', color: 'var(--text-on-accent)', fontWeight: '800', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)' }} onClick={handleFaceScan} disabled={loading || !cameraActive}>
             {loading ? 'Authenticating...' : 'Authenticate Face ID'}
           </button>
         </div>
       )}
 
-      {/* STEP 2: STUDENT REGISTRATION */}
+      {/* STEP 2: NEW STUDENT REGISTRATION */}
       {step === 'register' && (
-        <div className="glass-card" style={{ maxWidth: '520px', margin: '0 auto' }}>
-          <h3 style={{ marginBottom: '0.5rem', color: '#55efc4' }}>📝 New Student Registration</h3>
-          <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1.5rem' }}>
-            Your face was captured. Enter your details to complete registration.
+        <div className="glass-card" style={{ maxWidth: '480px', margin: '0 auto' }}>
+          <h3 style={{ color: 'var(--accent)', marginBottom: '0.5rem', textAlign: 'center', fontWeight: '800' }}>✨ Face ID Not Recognized</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', textAlign: 'center' }}>
+            Register as a new student to save your facial biometrics.
           </p>
 
           {tempFacePreview && (
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <img src={tempFacePreview} alt="Face Preview" style={{ width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #55efc4' }} />
+              <img src={tempFacePreview} alt="Face Preview" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--accent)' }} />
             </div>
           )}
 
-          <form onSubmit={handleCompleteRegistration}>
-            <label style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>Full Name</label>
-            <input className="input-field" placeholder="e.g. John Doe" value={studentName} onChange={(e) => setStudentName(e.target.value)} required />
+          <form onSubmit={handleRegisterSubmit}>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Full Name</label>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="e.g. Alice Smith"
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
+              required
+              style={{ marginBottom: '1.5rem' }}
+            />
 
-            <div style={{ margin: '1rem 0' }}>
-              <label style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', cursor: 'pointer' }}>
-                <input type="checkbox" checked={enrollVoice} onChange={(e) => setEnrollVoice(e.target.checked)} style={{ marginRight: '8px' }} />
-                Optional: Enroll Voice Print
+            {/* Optional Voice Enrollment */}
+            <div style={{ background: 'var(--bg-input)', padding: '12px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--border)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+                <input type="checkbox" checked={enrollVoice} onChange={(e) => setEnrollVoice(e.target.checked)} />
+                Optional: Enable Voice Biometrics
               </label>
+
+              {enrollVoice && (
+                <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                    Say: <em>"My name is {studentName || 'Student'} and I authorize SnapClass attendance."</em>
+                  </p>
+                  {!recordingVoice ? (
+                    <button type="button" className="btn-secondary" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={startRecordingVoice}>
+                      <Mic size={14} /> Record Voice Sample
+                    </button>
+                  ) : (
+                    <button type="button" className="btn-primary" style={{ background: '#ef4444', padding: '6px 14px', fontSize: '0.8rem' }} onClick={stopRecordingVoice}>
+                      Stop Recording
+                    </button>
+                  )}
+                  {voiceBlob && <p style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: '4px' }}>✓ Voice sample recorded!</p>}
+                </div>
+              )}
             </div>
 
-            {enrollVoice && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '10px', marginBottom: '1.5rem', textAlign: 'center' }}>
-                <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', marginBottom: '0.8rem' }}>Please say your name clearly:</p>
-                {!recordingVoice ? (
-                  <button type="button" className="btn-secondary" style={{ maxWidth: '240px', margin: '0 auto' }} onClick={startVoiceRecording}>
-                    <Mic size={16} /> Record Voice
-                  </button>
-                ) : (
-                  <button type="button" className="btn-secondary" style={{ maxWidth: '240px', margin: '0 auto', background: 'rgba(255, 118, 117, 0.2)', color: '#ff7675' }} onClick={stopVoiceRecording}>
-                    Stop Recording
-                  </button>
-                )}
-                {voiceBlob && <p style={{ fontSize: '0.75rem', color: '#55efc4', marginTop: '6px' }}>✓ Audio recorded!</p>}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <button type="button" className="btn-secondary" onClick={() => setStep('capture')}>Cancel</button>
-              <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Enrolling...' : 'Complete Setup'}
-              </button>
-            </div>
+            <button type="submit" className="btn-primary" style={{ width: '100%', background: 'var(--accent)', color: 'var(--text-on-accent)', fontWeight: '800' }} disabled={loading}>
+              {loading ? 'Registering...' : 'Register Student Biometrics'}
+            </button>
           </form>
         </div>
       )}
@@ -301,58 +331,69 @@ export default function StudentScreen({ initialSubjectCode = '' }) {
       {/* STEP 3: STUDENT DASHBOARD */}
       {step === 'dashboard' && (
         <div className="glass-card">
-          <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <BookOpen color="#55efc4" /> Enroll in a Course
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--accent)' }}>My Attendance Dashboard</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Registered Student ID: #{studentId}</p>
+            </div>
 
-          <form onSubmit={handleEnrollSubject} style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-            <input
-              className="input-field"
-              style={{ margin: 0 }}
-              placeholder="Enter Subject Code (e.g. CS101)"
-              value={enrollSubjectCode}
-              onChange={(e) => setEnrollSubjectCode(e.target.value)}
-            />
-            <button type="submit" className="btn-primary" style={{ width: '160px' }}>Enroll</button>
-          </form>
+            {/* Quick Course Enrollment Form */}
+            <form onSubmit={handleEnrollSubject} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="text"
+                className="input-field"
+                placeholder="Enter Subject Code (e.g. CS101)"
+                value={enrollSubjectCode}
+                onChange={(e) => setEnrollSubjectCode(e.target.value)}
+                style={{ width: '220px', padding: '8px 14px', fontSize: '0.85rem' }}
+                required
+              />
+              <button type="submit" className="btn-accent" style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'var(--accent)', color: 'var(--text-on-accent)', fontWeight: '800' }}>
+                <BookOpen size={14} color="var(--text-on-accent)" /> Enroll
+              </button>
+            </form>
+          </div>
 
           {enrollMsg && (
-            <p style={{ fontSize: '0.85rem', color: '#55efc4', marginBottom: '1.5rem' }}>{enrollMsg}</p>
+            <div style={{ padding: '10px', background: 'rgba(34, 197, 94, 0.15)', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem', fontWeight: '700' }}>
+              <CheckCircle size={14} style={{ display: 'inline', marginRight: '6px' }} />
+              {enrollMsg}
+            </div>
           )}
 
-          <h4 style={{ marginBottom: '1rem' }}>📊 My Attendance Summary</h4>
+          <h4 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--text-primary)' }}>Enrolled Courses & Records</h4>
+
           {summary.length > 0 ? (
-            <table className="styled-table">
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr>
-                  <th>Subject Code</th>
-                  <th>Subject Name</th>
-                  <th>Total Classes</th>
-                  <th>Attended</th>
-                  <th>Attendance %</th>
+                <tr style={{ borderBottom: '2px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  <th style={{ padding: '10px' }}>Subject Code</th>
+                  <th style={{ padding: '10px' }}>Subject Name</th>
+                  <th style={{ padding: '10px' }}>Classes Attended</th>
+                  <th style={{ padding: '10px' }}>Total Classes</th>
+                  <th style={{ padding: '10px' }}>Attendance Rate</th>
                 </tr>
               </thead>
               <tbody>
-                {summary.map((item, idx) => (
-                  <tr key={idx}>
-                    <td><strong>{item["Subject Code"]}</strong></td>
-                    <td>{item["Subject Name"]}</td>
-                    <td>{item["Total Classes Held"]}</td>
-                    <td>{item["Classes Attended"]}</td>
-                    <td><span className="badge-present">{item["Attendance %"]}</span></td>
+                {summary.map((item) => (
+                  <tr key={item.subject_id} style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                    <td style={{ padding: '12px 10px', fontWeight: '700', color: 'var(--accent)' }}>{item.subject_code}</td>
+                    <td style={{ padding: '12px 10px' }}>{item.subject_name}</td>
+                    <td style={{ padding: '12px 10px' }}>{item.attended}</td>
+                    <td style={{ padding: '12px 10px' }}>{item.total_classes}</td>
+                    <td style={{ padding: '12px 10px' }}>
+                      <span className={item.percentage >= 75 ? 'badge-present' : 'badge-absent'}>
+                        {item.percentage}%
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           ) : (
-            <p style={{ color: 'rgba(255,255,255,0.5)' }}>You are not enrolled in any subjects yet.</p>
+            <p style={{ color: 'var(--text-secondary)' }}>You are not enrolled in any subjects yet.</p>
           )}
 
-          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-            <button className="btn-secondary" style={{ maxWidth: '200px', margin: '0 auto' }} onClick={() => { setStudentId(null); setStep('capture'); }}>
-              <LogOut size={16} /> Logout
-            </button>
-          </div>
         </div>
       )}
     </div>

@@ -11,7 +11,7 @@ export default function Header({ currentScreen, onNavigateHome }) {
           <Camera size={22} color="#ffffff" />
         </div>
         <div>
-          <div className="snap-header-title">Snap Class</div>
+          <div className="snap-header-title">SnapClass</div>
           <div className="snap-header-sub">AI Biometric Attendance</div>
         </div>
       </div>

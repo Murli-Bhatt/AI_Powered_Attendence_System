@@ -20,33 +20,33 @@ export default function QRModal({ subject, onClose }) {
       left: 0,
       right: 0,
       bottom: 0,
-      background: 'rgba(0,0,0,0.7)',
-      backdropFilter: 'blur(8px)',
+      background: 'rgba(15, 23, 42, 0.4)',
+      backdropFilter: 'blur(6px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000
     }}>
-      <div className="glass-card" style={{ maxWidth: '420px', width: '100%', position: 'relative' }}>
+      <div className="glass-card" style={{ maxWidth: '420px', width: '100%', position: 'relative', background: '#ffffff' }}>
         <button 
           onClick={onClose} 
-          style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}
+          style={{ position: 'absolute', top: '18px', right: '18px', background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}
         >
           <X size={20} />
         </button>
 
-        <h3 style={{ marginBottom: '0.5rem', color: '#fff' }}>🖨️ Course QR Code</h3>
-        <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1.2rem' }}>
+        <h3 style={{ marginBottom: '0.4rem', color: '#0f172a', fontWeight: '800' }}>🖨️ Course QR Code</h3>
+        <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.2rem' }}>
           {subject.name} ({subject.subject_code}) - Sec {subject.section}
         </p>
 
         {qrUrl && (
-          <div style={{ textAlign: 'center', margin: '1rem 0' }}>
-            <img src={qrUrl} alt="Subject QR Code" style={{ borderRadius: '12px', width: '220px', height: '220px' }} />
+          <div style={{ textAlign: 'center', margin: '1rem 0', background: '#f8fafc', padding: '1rem', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+            <img src={qrUrl} alt="Subject QR Code" style={{ borderRadius: '8px', width: '220px', height: '220px' }} />
           </div>
         )}
 
-        <p style={{ fontSize: '0.8rem', color: '#c084fc', marginBottom: '1rem', wordBreak: 'break-all' }}>
+        <p style={{ fontSize: '0.8rem', color: '#4f46e5', marginBottom: '1rem', wordBreak: 'break-all', fontWeight: '600' }}>
           Encoded Link: <code>{enrollmentUrl}</code>
         </p>
 
