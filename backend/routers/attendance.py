@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, File, UploadFile, Form
+from fastapi import APIRouter, File, UploadFile, Form
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 import numpy as np
 from PIL import Image
 import io

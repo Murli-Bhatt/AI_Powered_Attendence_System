@@ -1,9 +1,12 @@
-import streamlit as st
+import functools
+import logging
 import numpy as np
 from backend.database.config import supabase
 import json
 
-@st.cache_resource(show_spinner=False)
+logger = logging.getLogger(__name__)
+
+@functools.lru_cache(maxsize=1)
 def load_dlib_models():
     """Load dlib models once and cache them to avoid high latency."""
     import dlib
@@ -69,15 +72,15 @@ def get_robust_faces(image_np, detector, cnn_detector, scan_mode="quick"):
             for f in cnn_faces:
                 faces.append(f.rect)
         except Exception as e:
-            st.warning(f"Deep Scan failed (Memory limit). Using Quick Scan instead.")
+            logger.warning(f"Deep Scan failed (Memory limit). Using Quick Scan instead: {e}")
             faces = detector(detect_image_np, 1)
             
         if len(faces) == 0:
             if scan_mode == "deep":
-                st.toast("Deep Scan found 0 faces. Using Quick Scan fallback...", icon="🔍")
+                logger.info("Deep Scan found 0 faces. Using Quick Scan fallback...")
             faces = detector(detect_image_np, 1)
         elif scan_mode == "deep":
-            st.toast("Deep Scan (CNN) successful!", icon="✅")
+            logger.info("Deep Scan (CNN) successful!")
             
     if scale != 1.0:
         inv_scale = 1.0 / scale
@@ -109,7 +112,7 @@ def get_face_encoding(image_np, scan_mode="quick"):
     
     return face_encoding
 
-@st.cache_resource(show_spinner=False)
+@functools.lru_cache(maxsize=1)
 def get_trained_svc():
     """
     Fetches student encodings from the database and trains an SVM model.
@@ -206,7 +209,10 @@ def register_student_face_in_db(student_id: int, image_np):
         supabase.table('students').update({
             "face_embedding": encoding.tolist()
         }).eq('student_id', student_id).execute()
-        get_trained_svc.clear()
+        if hasattr(get_trained_svc, 'cache_clear'):
+            get_trained_svc.cache_clear()
+        elif hasattr(get_trained_svc, 'clear'):
+            get_trained_svc.clear()
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}

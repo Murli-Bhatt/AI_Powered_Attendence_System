@@ -1,6 +1,5 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
 from backend.database.db import (
     register_teacher,
     login_teacher,

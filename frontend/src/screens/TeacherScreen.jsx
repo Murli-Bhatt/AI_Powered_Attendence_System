@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  GraduationCap, Camera, Mic, BookOpen, BarChart2,
-  LogOut, Plus, CheckCircle, AlertCircle, QrCode, Upload, Lock, Calendar
+  Camera, Mic, BookOpen, BarChart2,
+  Plus, CheckCircle, AlertCircle, QrCode, Lock, Calendar
 } from 'lucide-react';
 import {
   loginTeacher, registerTeacher, getTeacherSubjects, createSubject,
@@ -40,17 +40,18 @@ export default function TeacherScreen({
   const [scheduleSuccessMsg, setScheduleSuccessMsg] = useState('');
 
   // Dashboard State
-  const [activeTab, setActiveTab] = useState(initialTab); // 'take_attendance' | 'manage_subject' | 'attendance_record'
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
     if (initialTab) {
       setActiveTab(initialTab);
     }
   }, [initialTab]);
-  const [attendanceSubTab, setAttendanceSubTab] = useState('upload'); // 'upload' | 'camera' | 'voice'
+
+  const [attendanceSubTab, setAttendanceSubTab] = useState('upload');
   const [subjects, setSubjects] = useState([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
-  const [scanMode, setScanMode] = useState('quick'); // 'quick' | 'deep'
+  const [scanMode, setScanMode] = useState('quick');
 
   // Photo / Camera / Voice Processing State
   const [selectedPhotos, setSelectedPhotos] = useState([]);
@@ -313,10 +314,8 @@ export default function TeacherScreen({
 
   return (
     <div style={{ width: '100%', margin: '0 auto' }}>
-      {/* Auth Screens */}
       {authView !== 'dashboard' ? (
         <div style={{ maxWidth: '460px', margin: '0 auto', textAlign: 'center' }}>
-          {/* THDC-IHET Institutional Header - Centered Directly Above Card */}
           <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
             <div style={{
               width: '100px',
@@ -334,11 +333,7 @@ export default function TeacherScreen({
               <img
                 src="/thdc-logo.png"
                 alt="THDC Institute Logo"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain'
-                }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             </div>
             <h1 style={{
@@ -361,7 +356,6 @@ export default function TeacherScreen({
             </p>
           </div>
 
-          {/* Theme-aware Card Container */}
           <div style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-color)',
@@ -389,51 +383,25 @@ export default function TeacherScreen({
                 <h3 style={{ fontFamily: "'Times New Roman', Times, serif", textAlign: 'center', marginBottom: '1.5rem', color: '#2e3075', fontWeight: '800', fontSize: '1.4rem' }}>
                   FACULTY LOGIN
                 </h3>
-                
-                <label style={{ fontSize: '0.75rem', color: '#374151', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  USERNAME
-                </label>
+                <label style={{ fontSize: '0.75rem', color: '#374151', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>USERNAME</label>
                 <input
                   className="input-field"
-                  style={{
-                    background: '#f9fafb',
-                    color: '#111827',
-                    borderRadius: '9999px',
-                    padding: '12px 20px',
-                    border: '1.5px solid #d1d5db',
-                    marginTop: '6px',
-                    marginBottom: '1.2rem',
-                    fontSize: '0.92rem'
-                  }}
+                  style={{ background: '#f9fafb', color: '#111827', borderRadius: '9999px', padding: '12px 20px', border: '1.5px solid #d1d5db', marginTop: '6px', marginBottom: '1.2rem', fontSize: '0.92rem' }}
                   placeholder="Enter institutional username"
                   value={loginForm.username}
                   onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
                   required
                 />
-
-                <label style={{ fontSize: '0.75rem', color: '#374151', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  PASSWORD
-                </label>
+                <label style={{ fontSize: '0.75rem', color: '#374151', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>PASSWORD</label>
                 <input
                   type="password"
                   className="input-field"
-                  style={{
-                    background: '#f9fafb',
-                    color: '#111827',
-                    borderRadius: '9999px',
-                    padding: '12px 20px',
-                    border: '1.5px solid #d1d5db',
-                    marginTop: '6px',
-                    marginBottom: '1.5rem',
-                    fontSize: '0.92rem'
-                  }}
+                  style={{ background: '#f9fafb', color: '#111827', borderRadius: '9999px', padding: '12px 20px', border: '1.5px solid #d1d5db', marginTop: '6px', marginBottom: '1.5rem', fontSize: '0.92rem' }}
                   placeholder="Enter account password"
                   value={loginForm.password}
                   onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                   required
                 />
-
-                {/* Deep Navy Lock Icon Login Button */}
                 <button
                   type="submit"
                   style={{
@@ -450,45 +418,21 @@ export default function TeacherScreen({
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    boxShadow: '0 4px 14px rgba(46, 48, 117, 0.25)',
-                    transition: 'all 0.2s ease'
+                    boxShadow: '0 4px 14px rgba(46, 48, 117, 0.25)'
                   }}
                 >
                   <Lock size={18} color="#00c853" /> LOGIN
                 </button>
-
-                <div style={{ textAlign: 'center', margin: '1.2rem 0 1rem 0', fontSize: '0.8rem', color: '#9ca3af', fontWeight: '700' }}>
-                  OR
-                </div>
-
+                <div style={{ textAlign: 'center', margin: '1.2rem 0 1rem 0', fontSize: '0.8rem', color: '#9ca3af', fontWeight: '700' }}>OR</div>
                 <button
                   type="button"
-                  style={{
-                    width: '100%',
-                    background: '#ffffff',
-                    color: '#1f2937',
-                    border: '1.5px solid #d1d5db',
-                    padding: '12px',
-                    borderRadius: '9999px',
-                    fontSize: '0.88rem',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px'
-                  }}
+                  style={{ width: '100%', background: '#ffffff', color: '#1f2937', border: '1.5px solid #d1d5db', padding: '12px', borderRadius: '9999px', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                   onClick={() => alert("Google Single Sign-On initialized.")}
                 >
                   <span style={{ fontWeight: '800', color: '#4285F4' }}>G</span> Sign in with Google
                 </button>
-
                 <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                  <button
-                    type="button"
-                    style={{ background: 'transparent', border: 'none', color: '#00c853', fontSize: '0.85rem', fontWeight: '800', cursor: 'pointer' }}
-                    onClick={() => { setErrorMsg(''); setAuthView('register'); }}
-                  >
+                  <button type="button" style={{ background: 'transparent', border: 'none', color: '#00c853', fontSize: '0.85rem', fontWeight: '800', cursor: 'pointer' }} onClick={() => { setErrorMsg(''); setAuthView('register'); }}>
                     Need an account? Register New Faculty
                   </button>
                 </div>
@@ -498,119 +442,33 @@ export default function TeacherScreen({
                 <h3 style={{ fontFamily: "'Times New Roman', Times, serif", textAlign: 'center', marginBottom: '1.5rem', color: '#ffffff', fontWeight: '800', fontSize: '1.4rem' }}>
                   FACULTY REGISTRATION
                 </h3>
-
-                <label style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  FULL NAME
-                </label>
-                <input
-                  className="input-field"
-                  style={{ background: '#ffffff', color: '#1f2937', borderRadius: '9999px', padding: '12px 20px', border: 'none', marginTop: '4px', marginBottom: '1rem' }}
-                  placeholder="e.g. Dr. John Doe"
-                  value={regForm.name}
-                  onChange={(e) => setRegForm({ ...regForm, name: e.target.value })}
-                  required
-                />
-
-                <label style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  USERNAME
-                </label>
-                <input
-                  className="input-field"
-                  style={{ background: '#ffffff', color: '#1f2937', borderRadius: '9999px', padding: '12px 20px', border: 'none', marginTop: '4px', marginBottom: '1rem' }}
-                  placeholder="Choose username"
-                  value={regForm.username}
-                  onChange={(e) => setRegForm({ ...regForm, username: e.target.value })}
-                  required
-                />
-
-                <label style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  PASSWORD
-                </label>
-                <input
-                  type="password"
-                  className="input-field"
-                  style={{ background: '#ffffff', color: '#1f2937', borderRadius: '9999px', padding: '12px 20px', border: 'none', marginTop: '4px', marginBottom: '1rem' }}
-                  placeholder="Create password"
-                  value={regForm.password}
-                  onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
-                  required
-                />
-
-                <label style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  CONFIRM PASSWORD
-                </label>
-                <input
-                  type="password"
-                  className="input-field"
-                  style={{ background: '#ffffff', color: '#1f2937', borderRadius: '9999px', padding: '12px 20px', border: 'none', marginTop: '4px', marginBottom: '1.2rem' }}
-                  placeholder="Repeat password"
-                  value={regForm.confirmPassword}
-                  onChange={(e) => setRegForm({ ...regForm, confirmPassword: e.target.value })}
-                  required
-                />
-
-                <button
-                  type="submit"
-                  style={{
-                    width: '100%',
-                    background: 'linear-gradient(180deg, #3b3e8c 0%, #2e3075 100%)',
-                    color: '#ffffff',
-                    border: '2px solid #e5e7eb',
-                    padding: '14px',
-                    borderRadius: '9999px',
-                    fontSize: '0.95rem',
-                    fontWeight: '800',
-                    cursor: 'pointer'
-                  }}
-                >
-                  REGISTER ACCOUNT
-                </button>
-
+                <label style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>FULL NAME</label>
+                <input className="input-field" style={{ background: '#ffffff', color: '#1f2937', borderRadius: '9999px', padding: '12px 20px', border: 'none', marginTop: '4px', marginBottom: '1rem' }} placeholder="e.g. Dr. John Doe" value={regForm.name} onChange={(e) => setRegForm({ ...regForm, name: e.target.value })} required />
+                <label style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>USERNAME</label>
+                <input className="input-field" style={{ background: '#ffffff', color: '#1f2937', borderRadius: '9999px', padding: '12px 20px', border: 'none', marginTop: '4px', marginBottom: '1rem' }} placeholder="Choose username" value={regForm.username} onChange={(e) => setRegForm({ ...regForm, username: e.target.value })} required />
+                <label style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>PASSWORD</label>
+                <input type="password" className="input-field" style={{ background: '#ffffff', color: '#1f2937', borderRadius: '9999px', padding: '12px 20px', border: 'none', marginTop: '4px', marginBottom: '1rem' }} placeholder="Create password" value={regForm.password} onChange={(e) => setRegForm({ ...regForm, password: e.target.value })} required />
+                <label style={{ fontSize: '0.75rem', color: '#e5e7eb', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>CONFIRM PASSWORD</label>
+                <input type="password" className="input-field" style={{ background: '#ffffff', color: '#1f2937', borderRadius: '9999px', padding: '12px 20px', border: 'none', marginTop: '4px', marginBottom: '1.2rem' }} placeholder="Repeat password" value={regForm.confirmPassword} onChange={(e) => setRegForm({ ...regForm, confirmPassword: e.target.value })} required />
+                <button type="submit" style={{ width: '100%', background: 'linear-gradient(180deg, #3b3e8c 0%, #2e3075 100%)', color: '#ffffff', border: '2px solid #e5e7eb', padding: '14px', borderRadius: '9999px', fontSize: '0.95rem', fontWeight: '800', cursor: 'pointer' }}>REGISTER ACCOUNT</button>
                 <div style={{ textAlign: 'center', marginTop: '1.2rem' }}>
-                  <button
-                    type="button"
-                    style={{ background: 'transparent', border: 'none', color: '#00c853', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer' }}
-                    onClick={() => { setErrorMsg(''); setAuthView('login'); }}
-                  >
-                    Back to Login
-                  </button>
+                  <button type="button" style={{ background: 'transparent', border: 'none', color: '#00c853', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer' }} onClick={() => { setErrorMsg(''); setAuthView('login'); }}>Back to Login</button>
                 </div>
               </form>
             )}
           </div>
         </div>
       ) : (
-        /* Teacher Dashboard Hub */
         <div>
-
           {/* TAB 1: TAKE ATTENDANCE */}
           {activeTab === 'take_attendance' && (
             <div className="glass-card" style={{ background: 'var(--bg-card)', borderRadius: '28px', border: '1px solid var(--border)', boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.25)' }}>
-              {/* Header: Serif Page Title + Green Action CTA */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Times New Roman', Times, serif", fontSize: '1.8rem', fontWeight: '800', color: 'var(--accent)', lineHeight: '1.1' }}>
-                    MARK ATTENDANCE
-                  </h2>
+                  <h2 style={{ fontFamily: "'Times New Roman', Times, serif", fontSize: '1.8rem', fontWeight: '800', color: 'var(--accent)', lineHeight: '1.1' }}>MARK ATTENDANCE</h2>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Select subject and scan biometric attendance</p>
                 </div>
-                <button
-                  style={{
-                    background: 'var(--accent)',
-                    color: 'var(--text-on-accent)',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '9999px',
-                    fontSize: '0.88rem',
-                    fontWeight: '800',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                  onClick={() => setShowScheduleModal(true)}
-                >
+                <button style={{ background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', padding: '10px 20px', borderRadius: '9999px', fontSize: '0.88rem', fontWeight: '800', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setShowScheduleModal(true)}>
                   <Calendar size={16} color="var(--text-on-accent)" /> SCHEDULE CLASS
                 </button>
               </div>
@@ -626,103 +484,25 @@ export default function TeacherScreen({
               ) : (
                 <>
                   <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700' }}>Select Subject</label>
-                  <select
-                    className="input-field"
-                    value={selectedSubjectId}
-                    onChange={(e) => setSelectedSubjectId(e.target.value)}
-                  >
+                  <select className="input-field" value={selectedSubjectId} onChange={(e) => setSelectedSubjectId(e.target.value)}>
                     {subjects.map((s) => (
-                      <option key={s.subject_id} value={s.subject_id}>
-                        {s.subject_code} - {s.name} (Sec {s.section})
-                      </option>
+                      <option key={s.subject_id} value={s.subject_id}>{s.subject_code} - {s.name} (Sec {s.section})</option>
                     ))}
                   </select>
 
-                  {/* 3-Way Mode Toggle Selector inside Dark Input Bar */}
                   <div style={{ textAlign: 'center', margin: '1.5rem 0' }}>
-                    <div style={{
-                      display: 'inline-flex',
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border)',
-                      padding: '6px',
-                      borderRadius: '9999px',
-                      gap: '6px',
-                      boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)'
-                    }}>
-                      <button
-                        style={{
-                          background: attendanceSubTab === 'upload' ? 'var(--accent)' : 'transparent',
-                          color: attendanceSubTab === 'upload' ? 'var(--text-on-accent)' : 'var(--text-secondary)',
-                          border: 'none',
-                          padding: '10px 22px',
-                          borderRadius: '9999px',
-                          fontSize: '0.88rem',
-                          fontWeight: '800',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                        onClick={() => { setAttendanceSubTab('upload'); stopCamera(); }}
-                      >
-                        📸 Group Photos
-                      </button>
-                      <button
-                        style={{
-                          background: attendanceSubTab === 'camera' ? 'var(--accent)' : 'transparent',
-                          color: attendanceSubTab === 'camera' ? 'var(--text-on-accent)' : 'var(--text-secondary)',
-                          border: 'none',
-                          padding: '10px 22px',
-                          borderRadius: '9999px',
-                          fontSize: '0.88rem',
-                          fontWeight: '800',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                        onClick={() => { setAttendanceSubTab('camera'); startCamera(); }}
-                      >
-                        📹 Live Camera
-                      </button>
-                      <button
-                        style={{
-                          background: attendanceSubTab === 'voice' ? 'var(--accent)' : 'transparent',
-                          color: attendanceSubTab === 'voice' ? 'var(--text-on-accent)' : 'var(--text-secondary)',
-                          border: 'none',
-                          padding: '10px 22px',
-                          borderRadius: '9999px',
-                          fontSize: '0.88rem',
-                          fontWeight: '800',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                        onClick={() => { setAttendanceSubTab('voice'); stopCamera(); }}
-                      >
-                        🎙️ Voice Scan
-                      </button>
+                    <div style={{ display: 'inline-flex', background: 'var(--bg-input)', border: '1px solid var(--border)', padding: '6px', borderRadius: '9999px', gap: '6px', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)' }}>
+                      <button style={{ background: attendanceSubTab === 'upload' ? 'var(--accent)' : 'transparent', color: attendanceSubTab === 'upload' ? 'var(--text-on-accent)' : 'var(--text-secondary)', border: 'none', padding: '10px 22px', borderRadius: '9999px', fontSize: '0.88rem', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => { setAttendanceSubTab('upload'); stopCamera(); }}>📸 Group Photos</button>
+                      <button style={{ background: attendanceSubTab === 'camera' ? 'var(--accent)' : 'transparent', color: attendanceSubTab === 'camera' ? 'var(--text-on-accent)' : 'var(--text-secondary)', border: 'none', padding: '10px 22px', borderRadius: '9999px', fontSize: '0.88rem', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => { setAttendanceSubTab('camera'); startCamera(); }}>📹 Live Camera</button>
+                      <button style={{ background: attendanceSubTab === 'voice' ? 'var(--accent)' : 'transparent', color: attendanceSubTab === 'voice' ? 'var(--text-on-accent)' : 'var(--text-secondary)', border: 'none', padding: '10px 22px', borderRadius: '9999px', fontSize: '0.88rem', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => { setAttendanceSubTab('voice'); stopCamera(); }}>🎙️ Voice Scan</button>
                     </div>
                   </div>
 
                   {/* Sub-tab 1: Upload */}
                   {attendanceSubTab === 'upload' && (
                     <div>
-                      <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
-                        Upload up to 5 photos of the classroom to detect and recognize all student faces.
-                      </p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="input-field"
-                        onChange={(e) => setSelectedPhotos(Array.from(e.target.files))}
-                      />
-
+                      <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>Upload up to 5 photos of the classroom to detect and recognize all student faces.</p>
+                      <input type="file" accept="image/*" multiple className="input-field" onChange={(e) => setSelectedPhotos(Array.from(e.target.files))} />
                       {selectedPhotos.length > 0 && (
                         <div style={{ margin: '1rem 0' }}>
                           <p style={{ fontSize: '0.8rem', color: '#475569', fontWeight: '600', marginBottom: '0.5rem' }}>Selected Photos ({selectedPhotos.length}):</p>
@@ -730,20 +510,15 @@ export default function TeacherScreen({
                             {selectedPhotos.map((file, idx) => (
                               <div key={idx} style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '2px solid #4f46e5', height: '95px' }}>
                                 <img src={URL.createObjectURL(file)} alt={`Upload ${idx+1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                <span style={{ position: 'absolute', bottom: '4px', right: '4px', background: 'rgba(15,23,42,0.8)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', color: '#fff', fontWeight: '700' }}>
-                                  #{idx+1}
-                                </span>
+                                <span style={{ position: 'absolute', bottom: '4px', right: '4px', background: 'rgba(15,23,42,0.8)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', color: '#fff', fontWeight: '700' }}>#{idx+1}</span>
                               </div>
                             ))}
                           </div>
-
                           {errorMsg && (
                             <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
-                              <AlertCircle size={14} style={{ display: 'inline', marginRight: '6px' }} />
-                              {errorMsg}
+                              <AlertCircle size={14} style={{ display: 'inline', marginRight: '6px' }} />{errorMsg}
                             </div>
                           )}
-
                           <label style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '600', marginRight: '1rem' }}>Scan Mode:</label>
                           <label style={{ fontSize: '0.85rem', marginRight: '1rem', cursor: 'pointer', color: '#0f172a' }}>
                             <input type="radio" name="scan_mode" value="quick" checked={scanMode === 'quick'} onChange={() => setScanMode('quick')} /> Quick Scan (HOG)
@@ -762,9 +537,7 @@ export default function TeacherScreen({
                   {/* Sub-tab 2: Live Camera */}
                   {attendanceSubTab === 'camera' && (
                     <div style={{ textAlign: 'center' }}>
-                      <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
-                        Capture a picture of the classroom using your webcam.
-                      </p>
+                      <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>Capture a picture of the classroom using your webcam.</p>
                       <div style={{ margin: '0 auto 1rem auto', width: '100%', maxWidth: '480px', height: '320px', background: '#0f172a', borderRadius: '14px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>
                         <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
@@ -777,11 +550,7 @@ export default function TeacherScreen({
                   {/* Sub-tab 3: Voice Recognition */}
                   {attendanceSubTab === 'voice' && (
                     <div style={{ textAlign: 'center' }}>
-                      <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
-                        Record students calling out attendance to verify audio embeddings.
-                      </p>
-
-                      {/* Live animated waveform equalizer while recording */}
+                      <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>Record students calling out attendance to verify audio embeddings.</p>
                       {recordingVoice && (
                         <div>
                           <div className="waveform-container">
@@ -795,22 +564,17 @@ export default function TeacherScreen({
                           <p style={{ fontSize: '0.8rem', color: '#4f46e5', fontWeight: '600', marginBottom: '1rem' }}>🎙️ Recording audio live... Speak clearly</p>
                         </div>
                       )}
-
-                      {/* Recorded Audio Player */}
                       {recordedVoiceUrl && !recordingVoice && (
                         <div style={{ margin: '1.2rem auto', background: '#f8fafc', padding: '1rem', borderRadius: '14px', border: '1px solid #e2e8f0', maxWidth: '440px' }}>
                           <p style={{ fontSize: '0.8rem', color: '#4f46e5', fontWeight: '700', marginBottom: '0.6rem' }}>🎧 Listen to Recorded Audio:</p>
                           <audio controls src={recordedVoiceUrl} style={{ width: '100%', outline: 'none' }} />
                         </div>
                       )}
-
                       {errorMsg && (
                         <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', borderRadius: '8px', margin: '1rem auto', maxWidth: '440px', fontSize: '0.85rem' }}>
-                          <AlertCircle size={14} style={{ display: 'inline', marginRight: '6px' }} />
-                          {errorMsg}
+                          <AlertCircle size={14} style={{ display: 'inline', marginRight: '6px' }} />{errorMsg}
                         </div>
                       )}
-
                       <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
                         {!recordingVoice ? (
                           <button className="btn-primary" style={{ maxWidth: '240px' }} onClick={startVoiceRecording}>
@@ -821,7 +585,6 @@ export default function TeacherScreen({
                             Stop Recording
                           </button>
                         )}
-
                         {recordedVoiceBlob && !recordingVoice && (
                           <button className="btn-primary" style={{ maxWidth: '240px', background: 'linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)', boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)' }} onClick={handleAnalyzeVoice} disabled={loading}>
                             {loading ? 'Analyzing Voice...' : 'Analyze Voice Recording'}
@@ -837,12 +600,7 @@ export default function TeacherScreen({
                       <h4 style={{ marginBottom: '1rem', color: '#0d9488', fontWeight: '800' }}>Recognized Students ({detectedStudents.length})</h4>
                       <table className="styled-table">
                         <thead>
-                          <tr>
-                            <th>Student ID</th>
-                            <th>Name</th>
-                            <th>Detection Source</th>
-                            <th>Confidence</th>
-                          </tr>
+                          <tr><th>Student ID</th><th>Name</th><th>Detection Source</th><th>Confidence</th></tr>
                         </thead>
                         <tbody>
                           {detectedStudents.map((s, idx) => (
@@ -855,7 +613,6 @@ export default function TeacherScreen({
                           ))}
                         </tbody>
                       </table>
-
                       <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
                         <button className="btn-secondary" onClick={() => setDetectedStudents([])}>Discard</button>
                         <button className="btn-primary" onClick={handleConfirmLog} disabled={loading}>
@@ -968,27 +725,16 @@ export default function TeacherScreen({
               </h3>
 
               <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700' }}>Select Subject</label>
-              <select
-                className="input-field"
-                style={{ marginBottom: '1.5rem' }}
-                value={selectedSubjectId}
-                onChange={(e) => setSelectedSubjectId(e.target.value)}
-              >
+              <select className="input-field" style={{ marginBottom: '1.5rem' }} value={selectedSubjectId} onChange={(e) => setSelectedSubjectId(e.target.value)}>
                 {subjects.map((s) => (
-                  <option key={s.subject_id} value={s.subject_id}>
-                    {s.subject_code} - {s.name} (Sec {s.section})
-                  </option>
+                  <option key={s.subject_id} value={s.subject_id}>{s.subject_code} - {s.name} (Sec {s.section})</option>
                 ))}
               </select>
 
-              <AttendanceTable
-                records={records}
-                subjectCode={subjects.find((s) => String(s.subject_id) === String(selectedSubjectId))?.subject_code || ''}
-              />
+              <AttendanceTable records={records} subjectCode={subjects.find((s) => String(s.subject_id) === String(selectedSubjectId))?.subject_code || ''} />
             </div>
           )}
 
-          {/* Schedule Class Light Theme Modal */}
           {showScheduleModal && (
             <ScheduleModal
               subjects={subjects}

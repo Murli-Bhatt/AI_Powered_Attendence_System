@@ -16,8 +16,7 @@ def teacher_exists(username: str) -> bool:
     try:
         response = supabase.table('teachers').select('teacher_id').eq('username', username).execute()
         return len(response.data) > 0
-    except Exception as e:
-        pass
+    except Exception:
         return False
 
 def register_teacher(username: str, password: str, **kwargs) -> dict:
@@ -92,8 +91,7 @@ def get_teacher_subjects(teacher_id: int) -> list:
     try:
         response = supabase.table('subjects').select('*').eq('teacher_id', teacher_id).execute()
         return response.data
-    except Exception as e:
-        pass
+    except Exception:
         return []
 
 def create_subject(subject_code: str, name: str, section: str, teacher_id: int) -> dict:
@@ -161,8 +159,7 @@ def get_attendance_records(subject_id: int) -> list:
             })
             
         return flattened_data
-    except Exception as e:
-        pass
+    except Exception:
         return []
 
 def get_subject_by_code(subject_code: str) -> dict:
@@ -208,8 +205,7 @@ def get_enrolled_students(subject_id: int) -> list:
                 "name": student_data.get("name", "Unknown")
             })
         return enrolled
-    except Exception as e:
-        pass
+    except Exception:
         return []
 
 def get_student_attendance_summary(student_id: int) -> list:
@@ -241,6 +237,5 @@ def get_student_attendance_summary(student_id: int) -> list:
             })
             
         return summary
-    except Exception as e:
-        pass
+    except Exception:
         return []

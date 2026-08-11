@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, File, UploadFile, Form
+from fastapi import APIRouter, File, UploadFile, Form
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 import numpy as np
 from PIL import Image
 import io
@@ -71,8 +71,15 @@ async def register(
                 
         res = create_student(name, face_emb, voice_emb_list)
         if res["success"]:
-            get_trained_svc.clear()
-            get_known_voices.clear()
+            if hasattr(get_trained_svc, 'cache_clear'):
+                get_trained_svc.cache_clear()
+            elif hasattr(get_trained_svc, 'clear'):
+                get_trained_svc.clear()
+
+            if hasattr(get_known_voices, 'cache_clear'):
+                get_known_voices.cache_clear()
+            elif hasattr(get_known_voices, 'clear'):
+                get_known_voices.clear()
             return res
         else:
             return {"success": False, "error": res.get("error", "Failed to register student")}

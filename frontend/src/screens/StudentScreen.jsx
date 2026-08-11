@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserCheck, Camera, Mic, LogOut, CheckCircle, AlertCircle, BookOpen } from 'lucide-react';
+import { UserCheck, Mic, BookOpen, CheckCircle, AlertCircle } from 'lucide-react';
 import {
   authenticateStudentFace,
   registerStudent,
@@ -375,15 +375,15 @@ export default function StudentScreen({
                 </tr>
               </thead>
               <tbody>
-                {summary.map((item) => (
-                  <tr key={item.subject_id} style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-primary)' }}>
-                    <td style={{ padding: '12px 10px', fontWeight: '700', color: 'var(--accent)' }}>{item.subject_code}</td>
-                    <td style={{ padding: '12px 10px' }}>{item.subject_name}</td>
-                    <td style={{ padding: '12px 10px' }}>{item.attended}</td>
-                    <td style={{ padding: '12px 10px' }}>{item.total_classes}</td>
+                {summary.map((item, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                    <td style={{ padding: '12px 10px', fontWeight: '700', color: 'var(--accent)' }}>{item['Subject Code']}</td>
+                    <td style={{ padding: '12px 10px' }}>{item['Subject Name']}</td>
+                    <td style={{ padding: '12px 10px' }}>{item['Classes Attended']}</td>
+                    <td style={{ padding: '12px 10px' }}>{item['Total Classes Held']}</td>
                     <td style={{ padding: '12px 10px' }}>
-                      <span className={item.percentage >= 75 ? 'badge-present' : 'badge-absent'}>
-                        {item.percentage}%
+                      <span className="badge-present">
+                        {item['Attendance %']}
                       </span>
                     </td>
                   </tr>
@@ -393,7 +393,6 @@ export default function StudentScreen({
           ) : (
             <p style={{ color: 'var(--text-secondary)' }}>You are not enrolled in any subjects yet.</p>
           )}
-
         </div>
       )}
     </div>
