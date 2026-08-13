@@ -259,16 +259,6 @@ export default function HomeScreen({
               >
                 <Lock size={18} color="var(--text-on-accent)" /> {loading ? 'AUTHENTICATING...' : 'FACULTY LOGIN'}
               </button>
-
-              <div style={{ textAlign: 'center', marginTop: '1.2rem' }}>
-                <button
-                  type="button"
-                  style={{ background: 'transparent', border: 'none', color: 'var(--accent)', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer' }}
-                  onClick={() => alert("Please contact institutional IT administrator to reset faculty password.")}
-                >
-                  Forgot Password?
-                </button>
-              </div>
             </form>
           ) : (
             /* STUDENT FACE ID SCANNER LAUNCHER */

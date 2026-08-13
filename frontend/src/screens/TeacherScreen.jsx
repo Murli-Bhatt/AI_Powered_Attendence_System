@@ -423,14 +423,6 @@ export default function TeacherScreen({
                 >
                   <Lock size={18} color="#00c853" /> LOGIN
                 </button>
-                <div style={{ textAlign: 'center', margin: '1.2rem 0 1rem 0', fontSize: '0.8rem', color: '#9ca3af', fontWeight: '700' }}>OR</div>
-                <button
-                  type="button"
-                  style={{ width: '100%', background: '#ffffff', color: '#1f2937', border: '1.5px solid #d1d5db', padding: '12px', borderRadius: '9999px', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-                  onClick={() => alert("Google Single Sign-On initialized.")}
-                >
-                  <span style={{ fontWeight: '800', color: '#4285F4' }}>G</span> Sign in with Google
-                </button>
                 <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
                   <button type="button" style={{ background: 'transparent', border: 'none', color: '#00c853', fontSize: '0.85rem', fontWeight: '800', cursor: 'pointer' }} onClick={() => { setErrorMsg(''); setAuthView('register'); }}>
                     Need an account? Register New Faculty
