@@ -179,3 +179,8 @@ def submit_attendance_log(req: LogAttendanceRequest):
 def fetch_attendance_records(subject_id: int):
     records = get_attendance_records(subject_id)
     return {"success": True, "data": records}
+
+@router.get("/model-metrics")
+def fetch_model_metrics():
+    from backend.ml.evaluate_model import compute_evaluation_metrics
+    return compute_evaluation_metrics()

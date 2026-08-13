@@ -112,58 +112,7 @@ def get_face_encoding(image_np, scan_mode="quick"):
     
     return face_encoding
 
-@functools.lru_cache(maxsize=1)
-def get_trained_svc():
-    """
-    Fetches student encodings from the database and trains an SVM model.
-    """
-    from sklearn.svm import SVC
-    
-    try:
-        response = supabase.table('students').select('student_id, face_embedding').execute()
-        data = response.data
-    except Exception as e:
-        return None
-        
-    X_raw = []
-    y_raw = []
-    
-    for row in data:
-        if row.get('face_embedding') is not None:
-            try:
-                embedding = row['face_embedding'] 
-                if isinstance(embedding, str):
-                    embedding = json.loads(embedding)
-                    
-                X_raw.append(np.array(embedding))
-                y_raw.append(row['student_id'])
-            except Exception as e:
-                pass
-                
-    if len(X_raw) == 0:
-        return None
-        
-    unique_students = list(set(y_raw))
-    if len(unique_students) < 2:
-        return {"type": "fallback", "X": X_raw, "y": y_raw}
-        
-    X_aug = []
-    y_aug = []
-    noise_level = 0.01
-    samples_per_student = 10
-    
-    for emb, s_id in zip(X_raw, y_raw):
-        X_aug.append(emb)
-        y_aug.append(s_id)
-        for _ in range(samples_per_student - 1):
-            noise = np.random.normal(0, noise_level, emb.shape)
-            X_aug.append(emb + noise)
-            y_aug.append(s_id)
-            
-    clf = SVC(kernel='linear', probability=True)
-    clf.fit(X_aug, y_aug)
-    
-    return {"type": "svc", "model": clf}
+from backend.ml.svm_classifier import get_trained_svc, predict_face_embedding, clear_svm_cache
 
 def recognize_student_face(image_np, scan_mode="quick", tolerance=0.6):
     """
@@ -173,29 +122,7 @@ def recognize_student_face(image_np, scan_mode="quick", tolerance=0.6):
     if encoding is None:
         return {"success": False, "error": "No face detected in the image."}
         
-    model_data = get_trained_svc()
-    if model_data is None:
-        return {"success": False, "error": "Database is empty."}
-        
-    if model_data["type"] == "fallback":
-        X = np.array(model_data["X"])
-        y = model_data["y"]
-        distances = np.linalg.norm(X - encoding, axis=1)
-        min_idx = np.argmin(distances)
-        if distances[min_idx] <= tolerance:
-            return {"success": True, "student_id": int(y[min_idx]), "confidence": float(1.0 - distances[min_idx])}
-        return {"success": False, "error": "Face not recognized."}
-            
-    elif model_data["type"] == "svc":
-        clf = model_data["model"]
-        encoding_reshaped = encoding.reshape(1, -1)
-        prediction = clf.predict(encoding_reshaped)
-        probs = clf.predict_proba(encoding_reshaped)[0]
-        max_prob = max(probs)
-        
-        if max_prob >= 0.65:
-            return {"success": True, "student_id": int(prediction[0]), "confidence": float(max_prob)}
-        return {"success": False, "error": "Face not recognized (low confidence)."}
+    return predict_face_embedding(encoding, tolerance=tolerance)
 
 def register_student_face_in_db(student_id: int, image_np):
     """
@@ -209,17 +136,14 @@ def register_student_face_in_db(student_id: int, image_np):
         supabase.table('students').update({
             "face_embedding": encoding.tolist()
         }).eq('student_id', student_id).execute()
-        if hasattr(get_trained_svc, 'cache_clear'):
-            get_trained_svc.cache_clear()
-        elif hasattr(get_trained_svc, 'clear'):
-            get_trained_svc.clear()
+        clear_svm_cache()
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 def recognize_multiple_faces(image_np, scan_mode="quick", tolerance=0.6):
     """
-    Detects multiple faces in an image and recognizes them.
+    Detects multiple faces in an image and recognizes them using the SVM classifier.
     """
     detector, predictor, face_encoder, cnn_detector = load_dlib_models()
     faces = get_robust_faces(image_np, detector, cnn_detector, scan_mode=scan_mode)
@@ -227,33 +151,21 @@ def recognize_multiple_faces(image_np, scan_mode="quick", tolerance=0.6):
     if len(faces) == 0:
         return {"success": False, "error": "No faces detected in the image."}
         
-    model_data = get_trained_svc()
-    if model_data is None:
-        return {"success": False, "error": "Database is empty."}
-        
     results = []
     for face in faces:
         bbox = [int(face.top()), int(face.right()), int(face.bottom()), int(face.left())]
         shape = predictor(image_np, face)
         encoding = np.array(face_encoder.compute_face_descriptor(image_np, shape))
         
-        if model_data["type"] == "fallback":
-            X = np.array(model_data["X"])
-            y = model_data["y"]
-            distances = np.linalg.norm(X - encoding, axis=1)
-            min_idx = np.argmin(distances)
-            if distances[min_idx] <= tolerance:
-                results.append({"student_id": int(y[min_idx]), "confidence": float(1.0 - distances[min_idx]), "bbox": bbox})
-                
-        elif model_data["type"] == "svc":
-            clf = model_data["model"]
-            encoding_reshaped = encoding.reshape(1, -1)
-            prediction = clf.predict(encoding_reshaped)
-            probs = clf.predict_proba(encoding_reshaped)[0]
-            max_prob = max(probs)
-            if max_prob >= 0.65:
-                results.append({"student_id": int(prediction[0]), "confidence": float(max_prob), "bbox": bbox})
+        pred = predict_face_embedding(encoding, tolerance=tolerance)
+        if pred.get("success"):
+            results.append({
+                "student_id": pred["student_id"],
+                "confidence": pred["confidence"],
+                "bbox": bbox
+            })
                 
     if len(results) > 0:
         return {"success": True, "data": results}
     return {"success": False, "error": "Faces detected, but none recognized."}
+
