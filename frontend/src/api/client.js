@@ -131,3 +131,23 @@ export async function enrollStudent(studentId, subjectId) {
     }),
   });
 }
+
+export async function saveScheduleClass(scheduleData) {
+  return fetchJson("/teacher/schedule", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subject_id: scheduleData.subjectId,
+      subject_label: scheduleData.subjectLabel,
+      date: scheduleData.date,
+      start_time: scheduleData.startTime,
+      end_time: scheduleData.endTime,
+      room: scheduleData.room || "Classroom 301"
+    })
+  });
+}
+
+export async function getStudentSchedules(studentId) {
+  return fetchJson(`/student/schedules/${studentId}`);
+}
+

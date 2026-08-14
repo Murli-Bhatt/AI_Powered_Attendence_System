@@ -5,9 +5,38 @@ import HomeScreen from './screens/HomeScreen';
 import TeacherScreen from './screens/TeacherScreen';
 import StudentScreen from './screens/StudentScreen';
 
+// Helpers to safely restore session state from localStorage on page refresh
+const getInitialTeacher = () => {
+  try {
+    const saved = localStorage.getItem('snapclass_teacher');
+    return saved ? JSON.parse(saved) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const getInitialStudentId = () => {
+  return localStorage.getItem('snapclass_student_id') || null;
+};
+
+const getInitialScreen = () => {
+  const teacher = getInitialTeacher();
+  const student = getInitialStudentId();
+  const savedScreen = localStorage.getItem('snapclass_screen');
+  if (teacher) return savedScreen || 'teacher';
+  if (student) return savedScreen || 'student';
+  return savedScreen || 'home';
+};
+
+const getInitialTab = () => {
+  return localStorage.getItem('snapclass_tab') || 'take_attendance';
+};
+
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState('home'); // 'home' | 'teacher' | 'student'
-  const [activeTab, setActiveTab] = useState('take_attendance'); // 'take_attendance' | 'manage_subject' | 'attendance_record'
+  const [teacher, setTeacher] = useState(getInitialTeacher);
+  const [studentId, setStudentId] = useState(getInitialStudentId);
+  const [currentScreen, setCurrentScreen] = useState(getInitialScreen); // 'home' | 'teacher' | 'student'
+  const [activeTab, setActiveTab] = useState(getInitialTab); // 'take_attendance' | 'manage_subject' | 'attendance_record'
   const [initialSubjectCode, setInitialSubjectCode] = useState('');
 
   // Active Theme State: 'light' | 'dark' | 'sunset'
@@ -15,14 +44,35 @@ export default function App() {
     return localStorage.getItem('snapclass_theme') || 'light';
   });
 
-  // Active Role Session State
-  const [teacher, setTeacher] = useState(null);
-  const [studentId, setStudentId] = useState(null);
-
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('snapclass_theme', theme);
   }, [theme]);
+
+  // Sync navigation & session state to localStorage
+  useEffect(() => {
+    localStorage.setItem('snapclass_screen', currentScreen);
+  }, [currentScreen]);
+
+  useEffect(() => {
+    localStorage.setItem('snapclass_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (teacher) {
+      localStorage.setItem('snapclass_teacher', JSON.stringify(teacher));
+    } else {
+      localStorage.removeItem('snapclass_teacher');
+    }
+  }, [teacher]);
+
+  useEffect(() => {
+    if (studentId) {
+      localStorage.setItem('snapclass_student_id', studentId);
+    } else {
+      localStorage.removeItem('snapclass_student_id');
+    }
+  }, [studentId]);
 
   useEffect(() => {
     // Parse QR code deep links: ?action=enroll&subject_code=CS101
@@ -43,11 +93,15 @@ export default function App() {
 
   const handleTeacherLogout = () => {
     setTeacher(null);
+    localStorage.removeItem('snapclass_teacher');
+    localStorage.removeItem('snapclass_screen');
     setCurrentScreen('home');
   };
 
   const handleStudentLogout = () => {
     setStudentId(null);
+    localStorage.removeItem('snapclass_student_id');
+    localStorage.removeItem('snapclass_screen');
     setCurrentScreen('home');
   };
 
@@ -70,7 +124,7 @@ export default function App() {
         {/* Top Utility Header with Theme Change Options */}
         <TopHeader
           currentScreen={currentScreen}
-          onNavigateHome={() => setCurrentScreen('home')}
+          onNavigateHome={() => handleNavigate('home')}
           teacher={teacher}
           studentId={studentId}
           onLogout={() => {
@@ -108,9 +162,10 @@ export default function App() {
               onLoginSuccess={(teacherData) => {
                 setTeacher(teacherData);
                 setStudentId(null);
+                setCurrentScreen('teacher');
               }}
               onLogout={handleTeacherLogout}
-              onSwitchToStudent={() => setCurrentScreen('student')}
+              onSwitchToStudent={() => handleNavigate('student')}
             />
           )}
 
@@ -121,6 +176,7 @@ export default function App() {
               onStudentLogin={(sId) => {
                 setStudentId(sId);
                 setTeacher(null);
+                setCurrentScreen('student');
               }}
               onStudentLogout={handleStudentLogout}
             />

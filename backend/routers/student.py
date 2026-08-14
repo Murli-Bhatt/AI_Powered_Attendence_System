@@ -10,7 +10,8 @@ from backend.database.db import (
     create_student,
     get_subject_by_code,
     enroll_student,
-    get_student_attendance_summary
+    get_student_attendance_summary,
+    get_student_schedules
 )
 from backend.pipelines.face_pipeline import (
     recognize_student_face,
@@ -104,3 +105,9 @@ def fetch_subject_by_code(subject_code: str):
     if not res["success"]:
         return {"success": False, "error": res.get("error", "Subject not found")}
     return res
+
+@router.get("/schedules/{student_id}")
+def fetch_student_schedules(student_id: int):
+    schedules = get_student_schedules(student_id)
+    return {"success": True, "data": schedules}
+

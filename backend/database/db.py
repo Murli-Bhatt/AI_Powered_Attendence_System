@@ -239,3 +239,63 @@ def get_student_attendance_summary(student_id: int) -> list:
         return summary
     except Exception:
         return []
+
+# In-memory fallback schedule store (if table not created in Supabase yet)
+_in_memory_schedules = []
+
+def create_schedule(subject_id: int, subject_label: str, date: str, start_time: str, end_time: str, room: str = "Classroom") -> dict:
+    """Stores a scheduled class for a subject."""
+    schedule_data = {
+        "id": len(_in_memory_schedules) + 1,
+        "subject_id": int(subject_id),
+        "subject_label": subject_label,
+        "date": date,
+        "start_time": start_time,
+        "end_time": end_time,
+        "room": room
+    }
+    
+    # Try inserting into Supabase schedules table first
+    try:
+        response = supabase.table('schedules').insert(schedule_data).execute()
+        if response.data:
+            return {"success": True, "data": response.data[0]}
+    except Exception:
+        pass
+        
+    # Fallback to in-memory store
+    _in_memory_schedules.append(schedule_data)
+    return {"success": True, "data": schedule_data}
+
+def get_student_schedules(student_id: int) -> list:
+    """
+    Fetches schedules ONLY for subjects that the specific student is enrolled/registered in.
+    """
+    try:
+        # 1. Fetch subject IDs where this student is registered
+        enrollments = supabase.table('subject_students') \
+            .select('subject_id') \
+            .eq('student_id', student_id).execute()
+            
+        enrolled_subject_ids = [row['subject_id'] for row in enrollments.data]
+        if not enrolled_subject_ids:
+            return []
+            
+        # 2. Try fetching from Supabase table
+        try:
+            response = supabase.table('schedules').select('*').in_('subject_id', enrolled_subject_ids).execute()
+            if response.data:
+                return response.data
+        except Exception:
+            pass
+            
+        # 3. Fallback: filter in-memory store by registered subject_ids
+        student_schedules = [
+            s for s in _in_memory_schedules
+            if int(s['subject_id']) in [int(sid) for sid in enrolled_subject_ids]
+        ]
+        return student_schedules
+    except Exception as e:
+        print("Error fetching student schedules:", e)
+        return []
+

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserCheck, Mic, BookOpen, CheckCircle, AlertCircle } from 'lucide-react';
+import { UserCheck, Mic, BookOpen, CheckCircle, AlertCircle, Bell, Calendar, Clock, X } from 'lucide-react';
 import {
   authenticateStudentFace,
   registerStudent,
   getStudentAttendanceSummary,
   getSubjectByCode,
-  enrollStudent
+  enrollStudent,
+  getStudentSchedules
 } from '../api/client';
 
 export default function StudentScreen({
@@ -30,6 +31,7 @@ export default function StudentScreen({
   const [tempFaceEncoding, setTempFaceEncoding] = useState(null);
   const [tempFacePreview, setTempFacePreview] = useState(null);
   const [studentName, setStudentName] = useState('');
+  const [capturedFramePreview, setCapturedFramePreview] = useState(null);
 
   // Voice optional state
   const [enrollVoice, setEnrollVoice] = useState(false);
@@ -42,6 +44,47 @@ export default function StudentScreen({
   const [summary, setSummary] = useState([]);
   const [enrollSubjectCode, setEnrollSubjectCode] = useState(initialSubjectCode);
   const [enrollMsg, setEnrollMsg] = useState('');
+
+  // Class Schedule Notifications State
+  const [activeNotifications, setActiveNotifications] = useState([]);
+  const [showNoticePopup, setShowNoticePopup] = useState(true);
+  const [showNoticeDropdown, setShowNoticeDropdown] = useState(false);
+
+  const filterActiveSchedules = (schedulesList = []) => {
+    const now = new Date();
+    return schedulesList.filter((s) => {
+      try {
+        let scheduleDate = new Date(s.date);
+        if (isNaN(scheduleDate.getTime())) {
+          scheduleDate = new Date();
+        }
+        
+        const [endH, endM] = (s.end_time || '23:59').split(':').map(Number);
+        const classEnd = new Date(scheduleDate);
+        classEnd.setHours(endH, endM, 59, 999);
+
+        // Schedule is valid ONLY up until the scheduled class end time!
+        return now <= classEnd;
+      } catch (e) {
+        return true;
+      }
+    });
+  };
+
+  const loadStudentSchedules = async (sId) => {
+    try {
+      const res = await getStudentSchedules(sId);
+      if (res.success && res.data) {
+        const activeList = filterActiveSchedules(res.data);
+        setActiveNotifications(activeList);
+        if (activeList.length > 0) {
+          setShowNoticePopup(true);
+        }
+      }
+    } catch (err) {
+      console.error("Error loading student schedules:", err);
+    }
+  };
 
   useEffect(() => {
     if (initialSubjectCode) {
@@ -77,13 +120,13 @@ export default function StudentScreen({
   };
 
   useEffect(() => {
-    if (step === 'capture') {
+    if (step === 'capture' && !capturedFramePreview) {
       startCamera();
     } else {
       stopCamera();
     }
     return () => stopCamera();
-  }, [step]);
+  }, [step, capturedFramePreview]);
 
   // Load summary for student
   const loadSummary = async (sId) => {
@@ -100,25 +143,49 @@ export default function StudentScreen({
   useEffect(() => {
     if (studentId) {
       loadSummary(studentId);
+      loadStudentSchedules(studentId);
     }
   }, [studentId]);
 
-  // Handle Face ID Authentication
+  const handleRetakePhoto = () => {
+    setCapturedFramePreview(null);
+    setErrorMsg('');
+    startCamera();
+  };
+
+  // Handle Face ID Authentication with Frame Freeze
   const handleFaceScan = async () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current && !capturedFramePreview) return;
     setLoading(true);
     setErrorMsg('');
 
     try {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth || 640;
-      canvas.height = videoRef.current.videoHeight || 480;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      let blob;
+      let frameDataUrl;
 
-      const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+      if (!capturedFramePreview) {
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth || 640;
+        canvas.height = videoRef.current.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+
+        frameDataUrl = canvas.toDataURL('image/jpeg');
+        // Freeze frame image on screen immediately
+        setCapturedFramePreview(frameDataUrl);
+        // Stop live stream so camera freezes on captured frame
+        stopCamera();
+
+        blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+      } else {
+        // Convert existing dataURL back to blob if retrying
+        const res = await fetch(capturedFramePreview);
+        blob = await res.blob();
+      }
+
       const file = new File([blob], 'student_scan.jpg', { type: 'image/jpeg' });
 
+      // Calls backend endpoint which uses trained SVM classifier
       const res = await authenticateStudentFace(file);
       if (res.success) {
         if (res.matched) {
@@ -128,9 +195,11 @@ export default function StudentScreen({
           setStep('dashboard');
         } else {
           setTempFaceEncoding(res.face_encoding);
-          setTempFacePreview(canvas.toDataURL('image/jpeg'));
+          setTempFacePreview(capturedFramePreview || tempFacePreview);
           setStep('register');
         }
+      } else {
+        setErrorMsg(res.error || 'Face not recognized. Please try again.');
       }
     } catch (err) {
       setErrorMsg(err.message || 'Face authentication failed.');
@@ -249,7 +318,7 @@ export default function StudentScreen({
         <div className="glass-card" style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'center' }}>
           <h3 style={{ color: 'var(--accent)', marginBottom: '0.5rem', fontWeight: '800' }}>📷 Face ID Authentication</h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-            Position your face clearly in the camera view
+            {capturedFramePreview ? 'Captured snapshot frozen for SVM authentication:' : 'Position your face clearly in the camera view'}
           </p>
 
           {errorMsg && (
@@ -259,13 +328,40 @@ export default function StudentScreen({
             </div>
           )}
 
-          <div style={{ width: '100%', height: '300px', background: '#000000', borderRadius: '14px', overflow: 'hidden', marginBottom: '1.5rem', border: '1px solid var(--border)' }}>
-            <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <div style={{ width: '100%', height: '300px', background: '#000000', borderRadius: '14px', overflow: 'hidden', marginBottom: '1.5rem', border: '1px solid var(--border)', position: 'relative' }}>
+            {capturedFramePreview ? (
+              <img
+                src={capturedFramePreview}
+                alt="Captured Face Snapshot"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            )}
           </div>
 
-          <button className="btn-primary" style={{ background: 'var(--accent)', color: 'var(--text-on-accent)', fontWeight: '800', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)' }} onClick={handleFaceScan} disabled={loading || !cameraActive}>
-            {loading ? 'Authenticating...' : 'Authenticate Face ID'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            {capturedFramePreview && (
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ padding: '12px 20px', borderRadius: '9999px', fontWeight: '800', fontSize: '0.88rem' }}
+                onClick={handleRetakePhoto}
+                disabled={loading}
+              >
+                📸 Retake Photo
+              </button>
+            )}
+
+            <button
+              className="btn-primary"
+              style={{ background: 'var(--accent)', color: 'var(--text-on-accent)', fontWeight: '800', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)' }}
+              onClick={handleFaceScan}
+              disabled={loading || (!cameraActive && !capturedFramePreview)}
+            >
+              {loading ? 'Authenticating with SVM...' : (capturedFramePreview ? 'Authenticate Photo' : 'Authenticate Face ID')}
+            </button>
+          </div>
         </div>
       )}
 
@@ -325,33 +421,199 @@ export default function StudentScreen({
               {loading ? 'Registering...' : 'Register Student Biometrics'}
             </button>
           </form>
+
+          <div style={{ textAlign: 'center', marginTop: '1.2rem' }}>
+            <button
+              type="button"
+              style={{
+                background: 'transparent',
+                border: '1.5px solid var(--border)',
+                color: 'var(--text-primary)',
+                padding: '10px 20px',
+                borderRadius: '9999px',
+                fontSize: '0.85rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+              onClick={() => {
+                setCapturedFramePreview(null);
+                setErrorMsg('');
+                setStep('capture');
+              }}
+            >
+              📸 Retake / Re-scan Face ID
+            </button>
+          </div>
         </div>
       )}
 
       {/* STEP 3: STUDENT DASHBOARD */}
       {step === 'dashboard' && (
         <div className="glass-card">
+          {/* POPUP ALERT MODAL FOR UPCOMING SCHEDULED CLASSES */}
+          {showNoticePopup && activeNotifications.length > 0 && (
+            <div style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.6)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1100,
+              padding: '1rem'
+            }}>
+              <div style={{
+                background: 'var(--bg-card)',
+                border: '2px solid var(--accent)',
+                borderRadius: '20px',
+                padding: '1.5rem',
+                maxWidth: '480px',
+                width: '100%',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                position: 'relative'
+              }}>
+                <button
+                  onClick={() => setShowNoticePopup(false)}
+                  style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                >
+                  <X size={20} />
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', color: 'var(--accent)' }}>
+                  <Bell size={24} />
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Upcoming Class Alert</h3>
+                </div>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                  Your teacher has scheduled a class for a subject you are registered in:
+                </p>
+                {activeNotifications.map((notif, i) => (
+                  <div key={i} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px 16px', marginBottom: '10px' }}>
+                    <div style={{ fontWeight: '800', color: 'var(--accent)', fontSize: '0.95rem' }}>
+                      📚 {notif.subject_label}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '4px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      <span><Calendar size={13} style={{ display: 'inline', marginRight: '4px' }} /> Date: {notif.date}</span>
+                      <span><Clock size={13} style={{ display: 'inline', marginRight: '4px' }} /> Time: {notif.start_time} - {notif.end_time}</span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      📍 Location: {notif.room || 'Classroom'}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setShowNoticePopup(false)}
+                  className="btn-primary"
+                  style={{ width: '100%', marginTop: '0.5rem', background: 'var(--accent)', color: 'var(--text-on-accent)', fontWeight: '800' }}
+                >
+                  Got It, Understood!
+                </button>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--accent)' }}>My Attendance Dashboard</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Registered Student ID: #{studentId}</p>
             </div>
 
-            {/* Quick Course Enrollment Form */}
-            <form onSubmit={handleEnrollSubject} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <input
-                type="text"
-                className="input-field"
-                placeholder="Enter Subject Code (e.g. CS101)"
-                value={enrollSubjectCode}
-                onChange={(e) => setEnrollSubjectCode(e.target.value)}
-                style={{ width: '220px', padding: '8px 14px', fontSize: '0.85rem' }}
-                required
-              />
-              <button type="submit" className="btn-accent" style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'var(--accent)', color: 'var(--text-on-accent)', fontWeight: '800' }}>
-                <BookOpen size={14} color="var(--text-on-accent)" /> Enroll
-              </button>
-            </form>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              {/* Notification Bell Icon */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowNoticeDropdown(!showNoticeDropdown)}
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '50%',
+                    width: '42px',
+                    height: '42px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    position: 'relative'
+                  }}
+                  title="Class Notifications"
+                >
+                  <Bell size={20} color="var(--text-primary)" />
+                  {activeNotifications.length > 0 && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '-2px',
+                      right: '-2px',
+                      background: '#ef4444',
+                      color: '#ffffff',
+                      borderRadius: '50%',
+                      width: '18px',
+                      height: '18px',
+                      fontSize: '0.7rem',
+                      fontWeight: '900',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {activeNotifications.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Dropdown Menu */}
+                {showNoticeDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '50px',
+                    right: 0,
+                    width: '320px',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '16px',
+                    padding: '12px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+                    zIndex: 1050
+                  }}>
+                    <h5 style={{ fontWeight: '800', marginBottom: '8px', color: 'var(--accent)', fontSize: '0.9rem' }}>
+                      🔔 Class Notifications ({activeNotifications.length})
+                    </h5>
+                    {activeNotifications.length > 0 ? (
+                      activeNotifications.map((notif, idx) => (
+                        <div key={idx} style={{ padding: '8px', borderBottom: '1px solid var(--border)', fontSize: '0.8rem' }}>
+                          <div style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{notif.subject_label}</div>
+                          <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            📅 {notif.date} ({notif.start_time} - {notif.end_time})
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
+                        No active scheduled classes for your subjects.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Course Enrollment Form */}
+              <form onSubmit={handleEnrollSubject} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Enter Subject Code (e.g. CS101)"
+                  value={enrollSubjectCode}
+                  onChange={(e) => setEnrollSubjectCode(e.target.value)}
+                  style={{ width: '220px', padding: '8px 14px', fontSize: '0.85rem' }}
+                  required
+                />
+                <button type="submit" className="btn-accent" style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'var(--accent)', color: 'var(--text-on-accent)', fontWeight: '800' }}>
+                  <BookOpen size={14} color="var(--text-on-accent)" /> Enroll
+                </button>
+              </form>
+            </div>
           </div>
 
           {enrollMsg && (

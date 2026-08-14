@@ -5,9 +5,11 @@ from backend.database.db import (
     login_teacher,
     get_teacher_subjects,
     create_subject,
-    get_enrolled_students
+    get_enrolled_students,
+    create_schedule
 )
 from backend.database.config import supabase
+from typing import Optional
 
 router = APIRouter(prefix="/api/teacher", tags=["Teacher"])
 
@@ -25,6 +27,26 @@ class CreateSubjectRequest(BaseModel):
     name: str
     section: str
     teacher_id: int
+
+class ScheduleClassRequest(BaseModel):
+    subject_id: int
+    subject_label: str
+    date: str
+    start_time: str
+    end_time: str
+    room: Optional[str] = "Classroom 301"
+
+@router.post("/schedule")
+def schedule_class(req: ScheduleClassRequest):
+    res = create_schedule(
+        req.subject_id,
+        req.subject_label,
+        req.date,
+        req.start_time,
+        req.end_time,
+        req.room or "Classroom"
+    )
+    return res
 
 @router.post("/register")
 def register(req: TeacherRegisterRequest):

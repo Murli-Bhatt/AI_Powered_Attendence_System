@@ -1,35 +1,42 @@
 import React, { useState } from 'react';
 import { X, Calendar, Clock } from 'lucide-react';
+import { saveScheduleClass } from '../api/client';
 
 export default function ScheduleModal({ subjects = [], initialSubjectId = '', onClose, onScheduleSuccess }) {
   const [selectedSubjectId, setSelectedSubjectId] = useState(initialSubjectId || (subjects[0] ? subjects[0].subject_id : ''));
-  const [day, setDay] = useState('11');
+  const [day, setDay] = useState('13');
   const [month, setMonth] = useState('August');
   const [year, setYear] = useState('2026');
-  const [startTime, setStartTime] = useState('09:30');
-  const [endTime, setEndTime] = useState('10:30');
+  const [startTime, setStartTime] = useState('13:30');
+  const [endTime, setEndTime] = useState('14:30');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     const targetSubject = subjects.find(s => String(s.subject_id) === String(selectedSubjectId));
     const subjectLabel = targetSubject ? `${targetSubject.subject_code} - ${targetSubject.name}` : 'Subject';
+    const schedulePayload = {
+      subjectId: selectedSubjectId,
+      subjectLabel,
+      date: `${day} ${month} ${year}`,
+      startTime,
+      endTime,
+      room: "Classroom 301"
+    };
 
-    setTimeout(() => {
-      setLoading(false);
-      if (onScheduleSuccess) {
-        onScheduleSuccess({
-          subjectId: selectedSubjectId,
-          subjectLabel,
-          date: `${day} ${month} ${year}`,
-          startTime,
-          endTime
-        });
-      }
-      onClose();
-    }, 400);
+    try {
+      await saveScheduleClass(schedulePayload);
+    } catch (err) {
+      console.warn("Saving schedule fallback:", err);
+    }
+
+    setLoading(false);
+    if (onScheduleSuccess) {
+      onScheduleSuccess(schedulePayload);
+    }
+    onClose();
   };
 
   const daysList = Array.from({ length: 31 }, (_, i) => String(i + 1));
