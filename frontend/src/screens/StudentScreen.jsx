@@ -13,7 +13,8 @@ export default function StudentScreen({
   initialSubjectCode = '',
   studentId: externalStudentId = null,
   onStudentLogin = () => {},
-  onStudentLogout = () => {}
+  onStudentLogout = () => {},
+  onNotificationsUpdate = () => {}
 }) {
   const [studentId, setStudentId] = useState(externalStudentId);
   const [step, setStep] = useState(externalStudentId ? 'dashboard' : 'capture');
@@ -47,7 +48,7 @@ export default function StudentScreen({
 
   // Class Schedule Notifications State
   const [activeNotifications, setActiveNotifications] = useState([]);
-  const [showNoticePopup, setShowNoticePopup] = useState(true);
+  const [showNoticePopup, setShowNoticePopup] = useState(false);
   const [showNoticeDropdown, setShowNoticeDropdown] = useState(false);
 
   const filterActiveSchedules = (schedulesList = []) => {
@@ -77,6 +78,7 @@ export default function StudentScreen({
       if (res.success && res.data) {
         const activeList = filterActiveSchedules(res.data);
         setActiveNotifications(activeList);
+        onNotificationsUpdate(activeList);
         if (activeList.length > 0) {
           setShowNoticePopup(true);
         }
@@ -188,16 +190,16 @@ export default function StudentScreen({
       // Calls backend endpoint which uses trained SVM classifier
       const res = await authenticateStudentFace(file);
       if (res.success) {
-        if (res.matched) {
-          const sId = res.student_id;
-          setStudentId(sId);
-          onStudentLogin(sId);
-          setStep('dashboard');
-        } else {
-          setTempFaceEncoding(res.face_encoding);
-          setTempFacePreview(capturedFramePreview || tempFacePreview);
-          setStep('register');
-        }
+        // Successfully recognized face by SVM
+        const sId = res.student_id;
+        setStudentId(sId);
+        onStudentLogin(sId);
+        setStep('dashboard');
+      } else if (res.face_encoding) {
+        // Not recognized, but got encoding -> move to registration
+        setTempFaceEncoding(res.face_encoding);
+        setTempFacePreview(capturedFramePreview || tempFacePreview);
+        setStep('register');
       } else {
         setErrorMsg(res.error || 'Face not recognized. Please try again.');
       }
@@ -255,10 +257,12 @@ export default function StudentScreen({
       );
 
       if (res.success) {
-        const newStudentId = res.student_id;
+        const newStudentId = res.student_id || (res.data && res.data.length > 0 ? res.data[0].student_id : null);
         setStudentId(newStudentId);
         onStudentLogin(newStudentId);
         setStep('dashboard');
+      } else {
+        setErrorMsg(res.error || 'Student registration failed.');
       }
     } catch (err) {
       setErrorMsg(err.message || 'Student registration failed.');
@@ -490,20 +494,30 @@ export default function StudentScreen({
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                   Your teacher has scheduled a class for a subject you are registered in:
                 </p>
-                {activeNotifications.map((notif, i) => (
-                  <div key={i} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px 16px', marginBottom: '10px' }}>
-                    <div style={{ fontWeight: '800', color: 'var(--accent)', fontSize: '0.95rem' }}>
-                      📚 {notif.subject_label}
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '4px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                      <span><Calendar size={13} style={{ display: 'inline', marginRight: '4px' }} /> Date: {notif.date}</span>
-                      <span><Clock size={13} style={{ display: 'inline', marginRight: '4px' }} /> Time: {notif.start_time} - {notif.end_time}</span>
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      📍 Location: {notif.room || 'Classroom'}
-                    </div>
-                  </div>
-                ))}
+                
+                <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1.5rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <table className="styled-table" style={{ width: '100%', fontSize: '0.85rem', margin: 0 }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                      <tr>
+                        <th>Subject</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Location</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeNotifications.map((notif, i) => (
+                        <tr key={i}>
+                          <td style={{ fontWeight: '800', color: 'var(--accent)' }}>{notif.subject_label}</td>
+                          <td>{notif.date}</td>
+                          <td>{notif.start_time} - {notif.end_time}</td>
+                          <td>📍 {notif.room || 'Classroom'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
                 <button
                   onClick={() => setShowNoticePopup(false)}
                   className="btn-primary"
@@ -522,82 +536,6 @@ export default function StudentScreen({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              {/* Notification Bell Icon */}
-              <div style={{ position: 'relative' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowNoticeDropdown(!showNoticeDropdown)}
-                  style={{
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '50%',
-                    width: '42px',
-                    height: '42px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    position: 'relative'
-                  }}
-                  title="Class Notifications"
-                >
-                  <Bell size={20} color="var(--text-primary)" />
-                  {activeNotifications.length > 0 && (
-                    <span style={{
-                      position: 'absolute',
-                      top: '-2px',
-                      right: '-2px',
-                      background: '#ef4444',
-                      color: '#ffffff',
-                      borderRadius: '50%',
-                      width: '18px',
-                      height: '18px',
-                      fontSize: '0.7rem',
-                      fontWeight: '900',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      {activeNotifications.length}
-                    </span>
-                  )}
-                </button>
-
-                {/* Dropdown Menu */}
-                {showNoticeDropdown && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '50px',
-                    right: 0,
-                    width: '320px',
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '16px',
-                    padding: '12px',
-                    boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
-                    zIndex: 1050
-                  }}>
-                    <h5 style={{ fontWeight: '800', marginBottom: '8px', color: 'var(--accent)', fontSize: '0.9rem' }}>
-                      🔔 Class Notifications ({activeNotifications.length})
-                    </h5>
-                    {activeNotifications.length > 0 ? (
-                      activeNotifications.map((notif, idx) => (
-                        <div key={idx} style={{ padding: '8px', borderBottom: '1px solid var(--border)', fontSize: '0.8rem' }}>
-                          <div style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{notif.subject_label}</div>
-                          <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
-                            📅 {notif.date} ({notif.start_time} - {notif.end_time})
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
-                        No active scheduled classes for your subjects.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
               {/* Quick Course Enrollment Form */}
               <form onSubmit={handleEnrollSubject} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input
@@ -655,6 +593,43 @@ export default function StudentScreen({
           ) : (
             <p style={{ color: 'var(--text-secondary)' }}>You are not enrolled in any subjects yet.</p>
           )}
+
+          {/* UPCOMING SCHEDULED CLASSES TABLE - Displayed persistently in dashboard */}
+          <div style={{ marginTop: '2.5rem' }}>
+            <h4 style={{ marginBottom: '1rem', color: 'var(--accent)', fontWeight: '800' }}>📅 Upcoming Scheduled Classes</h4>
+            {activeNotifications.length > 0 ? (
+              <div style={{ overflowX: 'auto', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+                <table className="styled-table" style={{ width: '100%', marginBottom: 0 }}>
+                  <thead>
+                    <tr>
+                      <th>Subject Info</th>
+                      <th>Date scheduled</th>
+                      <th>Time slot</th>
+                      <th>Location</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeNotifications.map((notif, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: '800', color: 'var(--accent)' }}>{notif.subject_label}</td>
+                        <td style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{notif.date}</td>
+                        <td>
+                          <span style={{ background: 'var(--accent-light)', color: '#fff', padding: '4px 10px', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: '800' }}>
+                            {notif.start_time} - {notif.end_time}
+                          </span>
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)' }}>📍 {notif.room || 'Classroom'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', background: 'var(--bg-input)', padding: '1rem', borderRadius: '12px', border: '1px dashed var(--border)' }}>
+                No upcoming classes are scheduled for your enrolled subjects.
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

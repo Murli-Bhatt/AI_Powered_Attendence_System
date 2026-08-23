@@ -4,9 +4,14 @@ import { saveScheduleClass } from '../api/client';
 
 export default function ScheduleModal({ subjects = [], initialSubjectId = '', onClose, onScheduleSuccess }) {
   const [selectedSubjectId, setSelectedSubjectId] = useState(initialSubjectId || (subjects[0] ? subjects[0].subject_id : ''));
-  const [day, setDay] = useState('13');
-  const [month, setMonth] = useState('August');
-  const [year, setYear] = useState('2026');
+  const today = new Date();
+  const currentDay = String(today.getDate());
+  const currentMonth = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][today.getMonth()];
+  const currentYear = String(today.getFullYear());
+
+  const [day, setDay] = useState(currentDay);
+  const [month, setMonth] = useState(currentMonth);
+  const [year, setYear] = useState(currentYear);
   const [startTime, setStartTime] = useState('13:30');
   const [endTime, setEndTime] = useState('14:30');
   const [loading, setLoading] = useState(false);

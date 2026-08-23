@@ -38,6 +38,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState(getInitialScreen); // 'home' | 'teacher' | 'student'
   const [activeTab, setActiveTab] = useState(getInitialTab); // 'take_attendance' | 'manage_subject' | 'attendance_record'
   const [initialSubjectCode, setInitialSubjectCode] = useState('');
+  const [activeNotifications, setActiveNotifications] = useState([]);
 
   // Active Theme State: 'light' | 'dark' | 'sunset'
   const [theme, setTheme] = useState(() => {
@@ -133,6 +134,7 @@ export default function App() {
           }}
           theme={theme}
           onThemeChange={setTheme}
+          notifications={activeNotifications}
         />
 
         {/* Dynamic View Router */}
@@ -179,6 +181,7 @@ export default function App() {
                 setCurrentScreen('student');
               }}
               onStudentLogout={handleStudentLogout}
+              onNotificationsUpdate={setActiveNotifications}
             />
           )}
         </main>

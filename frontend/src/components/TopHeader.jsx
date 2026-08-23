@@ -8,7 +8,8 @@ export default function TopHeader({
   studentId,
   onLogout,
   theme = 'emerald',
-  onThemeChange = () => {}
+  onThemeChange = () => {},
+  notifications = []
 }) {
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -283,16 +284,36 @@ export default function TopHeader({
           </button>
 
           {/* Active Status Indicator Badge */}
-          <span style={{
-            position: 'absolute',
-            top: '2px',
-            right: '2px',
-            width: '10px',
-            height: '10px',
-            background: 'var(--accent)',
-            borderRadius: '50%',
-            border: '2px solid var(--header-bg)'
-          }}></span>
+          {notifications.length > 0 ? (
+            <span style={{
+              position: 'absolute',
+              top: '-2px',
+              right: '-2px',
+              background: '#ef4444',
+              color: '#ffffff',
+              borderRadius: '50%',
+              width: '18px',
+              height: '18px',
+              fontSize: '0.7rem',
+              fontWeight: '900',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {notifications.length}
+            </span>
+          ) : (
+            <span style={{
+              position: 'absolute',
+              top: '2px',
+              right: '2px',
+              width: '10px',
+              height: '10px',
+              background: 'var(--accent)',
+              borderRadius: '50%',
+              border: '2px solid var(--header-bg)'
+            }}></span>
+          )}
 
           {/* Notification Dropdown Popover */}
           {showNotifications && (
@@ -300,18 +321,30 @@ export default function TopHeader({
               position: 'absolute',
               right: 0,
               top: '50px',
-              width: '260px',
+              width: '280px',
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
               borderRadius: '16px',
               boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
-              padding: '12px 16px',
-              zIndex: 100
+              padding: '12px',
+              zIndex: 1000
             }}>
               <p style={{ fontSize: '0.82rem', fontWeight: '800', color: 'var(--accent)', marginBottom: '6px' }}>System Notifications</p>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '6px 0', borderTop: '1px solid var(--border)' }}>
-                🟢 THDC-IHET Attendance Server active & synchronized.
-              </div>
+              
+              {notifications.length > 0 ? (
+                notifications.map((notif, idx) => (
+                  <div key={idx} style={{ padding: '8px 4px', borderTop: '1px solid var(--border)', fontSize: '0.8rem' }}>
+                    <div style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{notif.subject_label}</div>
+                    <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      📅 {notif.date} ({notif.start_time} - {notif.end_time})
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '6px 0', borderTop: '1px solid var(--border)' }}>
+                  🟢 THDC-IHET Attendance Server active & synchronized. No new alerts.
+                </div>
+              )}
             </div>
           )}
         </div>
