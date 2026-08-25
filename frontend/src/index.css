@@ -13,6 +13,12 @@
   --bg-input: #141d2b;
   --input-bg: #141d2b;
 
+  --reg-heading: #ffffff;
+  --reg-label: #e5e7eb;
+  --reg-input-bg: #ffffff;
+  --reg-input-text: #1f2937;
+  --reg-input-border: none;
+
   --border: #1a241e;
   --border-color: #1a241e;
   --border-strong: #2a3830;
@@ -51,6 +57,12 @@
   --bg-card: #ffffff;
   --bg-input: #f9fafb;
   --input-bg: #f9fafb;
+
+  --reg-heading: #2e3075;
+  --reg-label: #4b5563;
+  --reg-input-bg: #f9fafb;
+  --reg-input-text: #1f2937;
+  --reg-input-border: 1.5px solid #d1d5db;
 
   --border: #e5e7eb;
   --border-color: #e5e7eb;
@@ -92,6 +104,12 @@
   --bg-input: #0e1828;
   --input-bg: #0e1828;
 
+  --reg-heading: #ffffff;
+  --reg-label: #e5e7eb;
+  --reg-input-bg: #ffffff;
+  --reg-input-text: #1f2937;
+  --reg-input-border: none;
+
   --border: #141f30;
   --border-color: #141f30;
   --border-strong: #1e2d45;
@@ -130,6 +148,12 @@
   --bg-card: #0d0d0d;
   --bg-input: #161616;
   --input-bg: #161616;
+
+  --reg-heading: #ffffff;
+  --reg-label: #e5e7eb;
+  --reg-input-bg: #ffffff;
+  --reg-input-text: #1f2937;
+  --reg-input-border: none;
 
   --border: #242424;
   --border-color: #242424;
